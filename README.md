@@ -12,7 +12,7 @@ The options of the integration:
 
 The music of a player is lowered while the satellite in its room is busy and restored afterwards. Both steps show on the player's activity:
 
-![Activity of a player: the volume was lowered from 10 % to 5 % and restored](docs/example2.jpg)
+![Activity of a player: the volume was lowered from 8 % to 4 % and restored by Duck My Music](docs/example2.jpg)
 
 ## What it is meant to do
 
