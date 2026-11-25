@@ -2,7 +2,13 @@
 
 A Home Assistant custom integration that lowers ("ducks") the music in a room while a voice satellite in that room is listening or speaking, and restores it afterwards.
 
-> **Status: first implementation, not tested with real hardware.** The behavior is described in [docs/behavior.md](docs/behavior.md), the design and the open points in [docs/plan.md](docs/plan.md).
+> **Status: beta version, first implementation. Use with care.** The behavior is described in [docs/behavior.md](docs/behavior.md), the design and the open points in [docs/plan.md](docs/plan.md).
+
+## Example
+
+The music of a player is lowered while the satellite in its room is busy and restored afterwards. Both steps show on the player's activity:
+
+![Activity of a player: the volume was lowered from 10 % to 5 % and restored by Satellite Controller](docs/example_protocol.jpg)
 
 ## What it is meant to do
 
