@@ -83,12 +83,20 @@ def plan_duck(
     """
     result = dict(ducked)
     actions: list[VolumeAction] = []
-    for group in _groups(players):
+    groups = _groups(players)
+    _LOGGER.debug("Planning area '%s': %d players in %d groups, %.0f %% reduction", area_id, len(players), len(groups), duck_fraction * 100)
+    for group in groups:
+        names = ", ".join(player.entity_id for player in group)
         if _is_ducked(group, result):
+            _LOGGER.debug("Group [%s] is lowered already, area '%s' now keeps it lowered too", names, area_id)
             result = _keep_ducked(group, result, area_id)
             continue
         target = _select_target(group, area_id, excluded_entities, excluded_devices)
-        if target is None or target.volume is None or target.volume <= 0:
+        if target is None:
+            _LOGGER.debug("Group [%s]: nothing to lower in area '%s'", names, area_id)
+            continue
+        if target.volume is None or target.volume <= 0:
+            _LOGGER.debug("Group [%s]: '%s' has volume %s, nothing to lower", names, target.entity_id, target.volume)
             continue
         if skip_multi_room_groups and _spans_other_areas(group, area_id):
             _LOGGER.debug("Group of '%s' has members outside area '%s', skipped", target.entity_id, area_id)
@@ -172,17 +180,31 @@ def _select_target(
     group: tuple[PlayerSnapshot, ...], area_id: str, excluded_entities: Collection[str], excluded_devices: Collection[str]
 ) -> PlayerSnapshot | None:
     """The one player of a group to lower: a playing one in the area, or None if the group is not playing there."""
-    candidates = [
-        player
-        for player in group
-        if player.playing
-        and player.can_set_volume
-        and not _is_group_player(player)
-        and player.entity_id not in excluded_entities
-        and (player.device_id is None or player.device_id not in excluded_devices)
-    ]
-    in_area = [player for player in candidates if player.area_id == area_id]
+    in_area = []
+    for player in group:
+        reason = _rejection_reason(player, area_id, excluded_entities, excluded_devices)
+        if reason is None:
+            in_area.append(player)
+        else:
+            _LOGGER.debug("Player '%s' not lowered: %s", player.entity_id, reason)
     return in_area[0] if in_area else None
+
+
+def _rejection_reason(player: PlayerSnapshot, area_id: str, excluded_entities: Collection[str], excluded_devices: Collection[str]) -> str | None:
+    """Why a player is not lowered for an area, or None if it is a candidate."""
+    if player.area_id != area_id:
+        return f"it is in area '{player.area_id}', not '{area_id}'"
+    if player.entity_id in excluded_entities:
+        return "it is excluded in the options"
+    if player.device_id is not None and player.device_id in excluded_devices:
+        return "it belongs to the busy satellite's own device"
+    if _is_group_player(player):
+        return "it only represents a group (lists members but is none of them)"
+    if not player.playing:
+        return "it is not playing"
+    if not player.can_set_volume:
+        return "it does not support setting the volume"
+    return None
 
 
 def _spans_other_areas(group: tuple[PlayerSnapshot, ...], area_id: str) -> bool:

@@ -125,6 +125,7 @@ class SatelliteController:
     async def _async_duck(self, area_id: str) -> None:
         async with self._lock:
             if area_id not in self._active:
+                _LOGGER.debug("Area '%s' is quiet again, not lowering", area_id)
                 return
             options = self._entry.options
             devices = {self._satellite_devices.get(satellite) for satellite in self._active[area_id]}
@@ -137,12 +138,15 @@ class SatelliteController:
                 self._ducked,
                 bool(options.get(CONF_SKIP_MULTI_ROOM_GROUPS, DEFAULT_SKIP_MULTI_ROOM_GROUPS)),
             )
+            _LOGGER.debug("Area '%s': %d volume changes planned, %d players lowered afterwards", area_id, len(plan.actions), len(plan.ducked))
             await self._async_apply(plan)
 
     async def _async_restore(self, area_id: str) -> None:
         async with self._lock:
             if area_id in self._active:
+                _LOGGER.debug("Area '%s' is busy again, not restoring", area_id)
                 return
+            _LOGGER.debug("Restoring area '%s', %d players lowered", area_id, len(self._ducked))
             await self._async_release(area_id)
 
     async def _async_release(self, area_id: str | None) -> None:
@@ -156,6 +160,7 @@ class SatelliteController:
         await self._store.async_save({"ducked": ducked_to_data(self._ducked)})
 
     async def _async_set_volume(self, action: VolumeAction) -> None:
+        _LOGGER.debug("Calling media_player.volume_set for '%s' with %.2f", action.entity_id, action.volume)
         try:
             await self._hass.services.async_call(
                 "media_player", "volume_set", {"entity_id": action.entity_id, "volume_level": action.volume}, blocking=True

@@ -153,3 +153,21 @@ def test_release_of_all_areas() -> None:
 def test_ducked_players_survive_storage() -> None:
     ducked = {"media_player.a": DuckedPlayer("media_player.a", 0.6, 0.3, frozenset({"kitchen", "bedroom"}))}
     assert ducked_from_data(ducked_to_data(ducked)) == ducked
+
+
+@pytest.mark.parametrize(
+    ("other", "excluded", "reason"),
+    [
+        ({"playing": False}, {}, "it is not playing"),
+        ({"can_set_volume": False}, {}, "it does not support setting the volume"),
+        ({"area_id": "bedroom"}, {}, "it is in area 'bedroom', not 'kitchen'"),
+        ({"device_id": "sat"}, {"excluded_devices": ["sat"]}, "it belongs to the busy satellite's own device"),
+        ({}, {"excluded_entities": ["media_player.a"]}, "it is excluded in the options"),
+        ({"group_members": ("media_player.b",)}, {}, "it only represents a group"),
+    ],
+)
+def test_the_reason_a_player_is_not_lowered_is_logged(caplog: pytest.LogCaptureFixture, other, excluded, reason) -> None:
+    with caplog.at_level(logging.DEBUG):
+        duck([player("media_player.a", **other)], **excluded)
+    assert f"Player 'media_player.a' not lowered: {reason}" in caplog.text
+    assert "nothing to lower in area 'kitchen'" in caplog.text

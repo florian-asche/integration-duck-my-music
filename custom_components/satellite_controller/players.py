@@ -6,12 +6,16 @@ the snapshots that ducking.py plans with.
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.components.media_player import MediaPlayerEntityFeature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .const import PLAYER_PLATFORMS
 from .ducking import PlayerSnapshot
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def collect_players(hass: HomeAssistant) -> list[PlayerSnapshot]:
@@ -21,20 +25,35 @@ def collect_players(hass: HomeAssistant) -> list[PlayerSnapshot]:
     for state in hass.states.async_all("media_player"):
         entry = registry.async_get(state.entity_id)
         if entry is None or entry.platform not in PLAYER_PLATFORMS:
+            _LOGGER.debug(
+                "Ignoring media player '%s': %s",
+                state.entity_id,
+                "it is not in the entity registry" if entry is None else f"platform '{entry.platform}' is not one of {sorted(PLAYER_PLATFORMS)}",
+            )
             continue
         volume = state.attributes.get("volume_level")
         features = state.attributes.get("supported_features") or 0
-        players.append(
-            PlayerSnapshot(
-                entity_id=state.entity_id,
-                area_id=er.async_get_effective_area_id(hass, entry),
-                device_id=entry.device_id,
-                playing=state.state == "playing",
-                volume=float(volume) if volume is not None else None,
-                can_set_volume=bool(features & MediaPlayerEntityFeature.VOLUME_SET),
-                group_members=tuple(state.attributes.get("group_members") or ()),
-            )
+        snapshot = PlayerSnapshot(
+            entity_id=state.entity_id,
+            area_id=er.async_get_effective_area_id(hass, entry),
+            device_id=entry.device_id,
+            playing=state.state == "playing",
+            volume=float(volume) if volume is not None else None,
+            can_set_volume=bool(features & MediaPlayerEntityFeature.VOLUME_SET),
+            group_members=tuple(state.attributes.get("group_members") or ()),
         )
+        _LOGGER.debug(
+            "Media player '%s' (%s): state %s, area %s, volume %s, volume control %s, group members %s",
+            snapshot.entity_id,
+            entry.platform,
+            state.state,
+            snapshot.area_id,
+            snapshot.volume,
+            snapshot.can_set_volume,
+            list(snapshot.group_members),
+        )
+        players.append(snapshot)
+    _LOGGER.debug("Found %d ESPHome and Music Assistant media players", len(players))
     return players
 
 

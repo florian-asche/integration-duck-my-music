@@ -199,3 +199,25 @@ async def test_lowered_players_are_restored_after_a_restart(hass: HomeAssistant,
     calls = async_mock_service(hass, "media_player", "volume_set")
     await setup_controller(hass)
     assert volumes(calls) == [("media_player.music", 0.6)]
+
+
+async def test_what_happens_after_the_trigger_is_logged(hass: HomeAssistant, caplog) -> None:
+    kitchen = ar.async_get(hass).async_create("Kitchen").id
+    add_entity(hass, "assist_satellite.kitchen", "esphome", kitchen)
+    add_entity(hass, "media_player.music", "esphome", kitchen)
+    add_entity(hass, "media_player.cast", "cast", kitchen)
+    set_player(hass, "media_player.music", 0.6)
+    set_player(hass, "media_player.cast", 0.6)
+    async_mock_service(hass, "media_player", "volume_set")
+    await setup_controller(hass)
+
+    with caplog.at_level("DEBUG", logger="custom_components.satellite_controller"):
+        hass.states.async_set("assist_satellite.kitchen", "listening")
+        await hass.async_block_till_done()
+
+    assert "Ignoring media player 'media_player.cast': platform 'cast' is not one of" in caplog.text
+    assert "Media player 'media_player.music' (esphome): state playing" in caplog.text
+    assert "Found 1 ESPHome and Music Assistant media players" in caplog.text
+    assert "Planning area" in caplog.text
+    assert "Calling media_player.volume_set for 'media_player.music' with 0.30" in caplog.text
+    assert "1 volume changes planned" in caplog.text
