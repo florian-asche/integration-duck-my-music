@@ -2,7 +2,7 @@
 
 A Home Assistant custom integration that lowers ("ducks") the music in a room while a voice satellite in that room is listening or speaking, and restores it afterwards.
 
-> **Status: first implementation, not tested with real hardware.** The design and the open points are in [docs/plan.md](docs/plan.md).
+> **Status: first implementation, not tested with real hardware.** The behavior is described in [docs/behavior.md](docs/behavior.md), the design and the open points in [docs/plan.md](docs/plan.md).
 
 ## What it is meant to do
 
