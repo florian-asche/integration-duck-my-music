@@ -12,10 +12,10 @@ player is handled instead of its members. The music is either lowered or paused.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-import logging
 from typing import Any
 
 from .const import MODE_PAUSE
@@ -166,11 +166,7 @@ def plan_release(area_id: str | None, ducked: Mapping[str, DuckedPlayer], curren
     """
     remaining: dict[str, DuckedPlayer] = {}
     actions: list[PlayerAction] = []
-    lowered_volumes = [
-        player.expected_volume if player.expected_volume is not None else player.ducked_volume
-        for player in ducked.values()
-        if player.expected_volume is not None or player.ducked_volume is not None
-    ]
+    lowered_volumes = [volume for volume in (_lowered_volume(player) for player in ducked.values()) if volume is not None]
     for entity_id, player in ducked.items():
         areas = player.areas - {area_id} if area_id is not None else frozenset()
         if areas:
@@ -219,9 +215,7 @@ def ducked_from_data(data: list[dict[str, Any]]) -> dict[str, DuckedPlayer]:
     }
 
 
-def _plan_group(
-    group: PlayerSnapshot, members: tuple[PlayerSnapshot, ...], area_id: str, duck_fraction: float, mode: str, result: dict[str, DuckedPlayer]
-) -> PlayerAction | None:
+def _plan_group(group: PlayerSnapshot, members: tuple[PlayerSnapshot, ...], area_id: str, duck_fraction: float, mode: str, result: dict[str, DuckedPlayer]) -> PlayerAction | None:
     """
     Plan a sync group player: it is set, and its members are not.
 
@@ -298,3 +292,8 @@ def _rejection_reason(player: PlayerSnapshot, area_id: str, excluded_entities: C
 
 def _is_lowered_volume(volume: float, lowered_volumes: Collection[float]) -> bool:
     return any(abs(volume - lowered) <= VOLUME_TOLERANCE for lowered in lowered_volumes)
+
+
+def _lowered_volume(player: DuckedPlayer) -> float | None:
+    """The volume a lowered player is expected to report."""
+    return player.expected_volume if player.expected_volume is not None else player.ducked_volume

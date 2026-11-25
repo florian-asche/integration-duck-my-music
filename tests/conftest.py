@@ -19,4 +19,3 @@ def satellite_controller_integration(enable_custom_integrations: None) -> None:
 
     if str(COMPONENTS) not in list(custom_components.__path__):
         custom_components.__path__.append(str(COMPONENTS))
-

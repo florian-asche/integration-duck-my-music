@@ -1,8 +1,9 @@
 """Tests for the controller: satellite states in, volume service calls out."""
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
-
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_fire_time_changed, async_mock_service
 
 from custom_components.satellite_controller.const import DOMAIN
@@ -75,7 +76,7 @@ async def test_area_stays_lowered_until_the_last_satellite_is_idle(hass: HomeAss
     set_player(hass, "media_player.music", 0.3)
     hass.states.async_set("assist_satellite.one", "idle")
     await hass.async_block_till_done()
-    assert calls == []
+    assert not calls
     hass.states.async_set("assist_satellite.two", "idle")
     await hass.async_block_till_done()
     assert volumes(calls) == [("media_player.music", 0.6)]
@@ -96,7 +97,7 @@ async def test_satellite_own_player_and_satellites_of_other_integrations_are_ign
     hass.states.async_set("assist_satellite.kitchen", "listening")
     hass.states.async_set("assist_satellite.other", "listening")
     await hass.async_block_till_done()
-    assert calls == []
+    assert not calls
 
 
 async def test_player_that_starts_while_the_satellite_is_busy_is_lowered(hass: HomeAssistant) -> None:
@@ -109,7 +110,7 @@ async def test_player_that_starts_while_the_satellite_is_busy_is_lowered(hass: H
 
     hass.states.async_set("assist_satellite.kitchen", "listening")
     await hass.async_block_till_done()
-    assert calls == []
+    assert not calls
 
     set_player(hass, "media_player.music", 0.8)
     await hass.async_block_till_done()
@@ -145,7 +146,7 @@ async def test_restore_delay_waits_before_restoring(hass: HomeAssistant, freezer
     set_player(hass, "media_player.music", 0.3)
     hass.states.async_set("assist_satellite.kitchen", "idle")
     await hass.async_block_till_done()
-    assert calls == []
+    assert not calls
 
     freezer.tick(2.5)
     async_fire_time_changed(hass)
@@ -171,7 +172,7 @@ async def test_busy_again_during_the_restore_delay_cancels_the_restore(hass: Hom
     freezer.tick(2.5)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
-    assert calls == []
+    assert not calls
 
 
 async def test_unloading_restores_lowered_players(hass: HomeAssistant) -> None:
@@ -237,7 +238,7 @@ async def test_pause_mode_pauses_and_resumes(hass: HomeAssistant) -> None:
     hass.states.async_set("assist_satellite.kitchen", "listening")
     await hass.async_block_till_done()
     assert [call.data["entity_id"] for call in pause_calls] == ["media_player.music"]
-    assert volume_calls == []
+    assert not volume_calls
 
     set_player(hass, "media_player.music", 0.6, state="paused")
     hass.states.async_set("assist_satellite.kitchen", "idle")
@@ -259,7 +260,7 @@ async def test_pause_mode_does_not_resume_music_the_user_started_again(hass: Hom
     set_player(hass, "media_player.music", 0.6, state="playing")
     hass.states.async_set("assist_satellite.kitchen", "idle")
     await hass.async_block_till_done()
-    assert play_calls == []
+    assert not play_calls
 
 
 async def test_actions_show_on_the_players_activity(hass: HomeAssistant) -> None:
@@ -293,7 +294,7 @@ async def test_failed_service_call_leaves_no_activity_entry(hass: HomeAssistant)
 
     hass.states.async_set("assist_satellite.kitchen", "listening")
     await hass.async_block_till_done()
-    assert entries == []
+    assert not entries
 
 
 async def test_sync_group_player_is_set_and_its_members_are_not(hass: HomeAssistant) -> None:

@@ -10,13 +10,13 @@ applies the result.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Mapping
 import logging
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_LOGBOOK_ENTRY, EVENT_STATE_CHANGED
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.core import CALLBACK_TYPE, Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later
@@ -78,7 +78,7 @@ class SatelliteController:
             await self._async_release(None)
 
     @callback
-    def _handle_state_changed(self, event: Event) -> None:
+    def _handle_state_changed(self, event: Event[EventStateChangedData]) -> None:
         entity_id: str = event.data["entity_id"]
         new_state = event.data["new_state"]
         if entity_id.startswith("assist_satellite."):
@@ -185,6 +185,6 @@ def _service_call(action: PlayerAction) -> tuple[str, dict[str, Any]]:
 
 
 @callback
-def _is_relevant(data: Mapping[str, Any] | Any) -> bool:
+def _is_relevant(data: EventStateChangedData) -> bool:
     entity_id: str = data["entity_id"]
     return entity_id.startswith(("assist_satellite.", "media_player."))

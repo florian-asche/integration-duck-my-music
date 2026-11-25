@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
@@ -61,18 +60,14 @@ class SatelliteControllerOptionsFlow(OptionsFlow):
         options = self.config_entry.options
         schema = vol.Schema(
             {
-                vol.Required(CONF_MODE, default=options.get(CONF_MODE, DEFAULT_MODE)): SelectSelector(
-                    SelectSelectorConfig(options=[MODE_DUCK, MODE_PAUSE], translation_key=CONF_MODE)
-                ),
+                vol.Required(CONF_MODE, default=options.get(CONF_MODE, DEFAULT_MODE)): SelectSelector(SelectSelectorConfig(options=[MODE_DUCK, MODE_PAUSE], translation_key=CONF_MODE)),
                 vol.Required(CONF_DUCK_PERCENT, default=options.get(CONF_DUCK_PERCENT, DEFAULT_DUCK_PERCENT)): NumberSelector(
                     NumberSelectorConfig(min=10, max=90, step=5, unit_of_measurement="%", mode=NumberSelectorMode.SLIDER)
                 ),
                 vol.Required(CONF_RESTORE_DELAY, default=options.get(CONF_RESTORE_DELAY, DEFAULT_RESTORE_DELAY)): NumberSelector(
                     NumberSelectorConfig(min=0, max=10, step=0.5, unit_of_measurement="s", mode=NumberSelectorMode.SLIDER)
                 ),
-                vol.Required(CONF_EXCLUDED_ENTITIES, default=options.get(CONF_EXCLUDED_ENTITIES, [])): EntitySelector(
-                    EntitySelectorConfig(domain="media_player", multiple=True)
-                ),
+                vol.Required(CONF_EXCLUDED_ENTITIES, default=options.get(CONF_EXCLUDED_ENTITIES, [])): EntitySelector(EntitySelectorConfig(domain="media_player", multiple=True)),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="init", data_schema=schema)  # type: ignore[arg-type]

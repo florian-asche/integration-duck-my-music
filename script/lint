@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Runs black, isort, flake8, pylint and mypy. Use --auto to let black and isort fix the files.
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+
+PYTHON=python3
+[ -x .venv/bin/python ] && PYTHON=.venv/bin/python
+DIRS="custom_components tests"
+
+if [ "$1" = "--auto" ]; then
+    $PYTHON -m black $DIRS && $PYTHON -m isort $DIRS
+    exit $?
+fi
+
+failed=0
+echo "=== black ===" && $PYTHON -m black --check $DIRS || failed=1
+echo "=== isort ===" && $PYTHON -m isort --check --diff $DIRS || failed=1
+echo "=== flake8 ===" && $PYTHON -m flake8 $DIRS || failed=1
+echo "=== pylint ===" && $PYTHON -m pylint $DIRS || failed=1
+echo "=== mypy ===" && $PYTHON -m mypy custom_components || failed=1
+
+if [ $failed -ne 0 ]; then
+    echo "Linting failed!"
+    exit 1
+fi
+echo "All linting checks passed!"

@@ -62,15 +62,12 @@ def test_excluded_player_and_device_are_left_alone() -> None:
     assert plan.actions == ()
 
 
-
-
 def test_planning_again_changes_nothing() -> None:
     players = [player("media_player.a")]
     first = duck(players)
     second = duck(players, ducked=first.ducked)
     assert second.actions == ()
     assert second.ducked == first.ducked
-
 
 
 def test_release_restores_the_original_volume() -> None:
@@ -143,7 +140,6 @@ def test_pause_mode_pauses_instead_of_lowering() -> None:
 def test_pause_mode_needs_pause_support_but_not_volume_control() -> None:
     assert duck([player("media_player.a", can_pause=False)], mode="pause").actions == ()
     assert duck([player("media_player.a", None, can_set_volume=False)], mode="pause").actions == (PlayerAction("media_player.a", ActionKind.PAUSE),)
-
 
 
 def test_release_resumes_a_paused_player() -> None:
