@@ -9,5 +9,24 @@
     "abort": {
       "single_instance_allowed": "Satellite Controller is already set up."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Satellite Controller options",
+        "data": {
+          "duck_percent": "Lower the volume by",
+          "restore_delay": "Restore delay",
+          "excluded_entities": "Players that are never lowered",
+          "skip_multi_room_groups": "Skip groups that span several rooms"
+        },
+        "data_description": {
+          "duck_percent": "Each playing player loses this share of its own volume while a satellite in its room is busy.",
+          "restore_delay": "Seconds to wait after the satellite is idle before the volume is restored. Useful for follow-up questions.",
+          "excluded_entities": "Add players that lower their own music, such as the player of the satellite that speaks, when it shows up as a second player.",
+          "skip_multi_room_groups": "A group is lowered as a whole. Turn this on to leave groups alone that also play in other rooms."
+        }
+      }
+    }
   }
 }

@@ -37,3 +37,21 @@ async def test_entry_loads_and_unloads(hass: HomeAssistant) -> None:
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_options_flow_saves_the_options(hass: HomeAssistant) -> None:
+    """The options can be changed and are stored."""
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input={})
+    entry = result["result"]
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={"duck_percent": 70, "restore_delay": 2, "excluded_entities": ["media_player.x"], "skip_multi_room_groups": True},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["duck_percent"] == 70
+    assert entry.options["excluded_entities"] == ["media_player.x"]

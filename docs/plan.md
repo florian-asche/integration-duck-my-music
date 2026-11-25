@@ -1,6 +1,6 @@
 # Satellite Controller: plan
 
-Status: design, nothing but the skeleton is implemented. Items marked *unverified* have not been confirmed against source code or hardware.
+Status: milestones 1-5 are implemented (see section 10). Hardware measurement (milestone 0) and hardware tests (milestone 6) are not done. Items marked *unverified* have not been confirmed against source code or hardware.
 
 ## 1. Goal
 
@@ -55,7 +55,7 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 
 ## 4. Architecture
 
-- `integration_type: service`, `iot_class: local_push`, `single_config_entry: true`, `config_flow: true`, `after_dependencies` `assist_satellite` and `media_player` (only load order, no hard dependency: the integration reads entity states and calls `media_player.volume_set`, it imports nothing from those components and compares the satellite states as strings). No external requirements, no YAML. Tests therefore need nothing beyond `pytest-homeassistant-custom-component`.
+- `integration_type: service`, `iot_class: local_push`, `single_config_entry: true`, `config_flow: true`, `after_dependencies` `assist_satellite` and `media_player` (only load order, no hard dependency: the integration reads entity states and calls `media_player.volume_set`, it only imports the `MediaPlayerEntityFeature` constants and compares the satellite states as strings). No external requirements, no YAML. Tests therefore need nothing beyond `pytest-homeassistant-custom-component`.
 - State changes of all ESPHome `assist_satellite` entities are tracked with `async_track_state_change_event`. New satellites are found through registry events. Each satellite's area comes from `async_get_effective_area_id`. Satellites without an area are ignored (reported in diagnostics).
 - Per area the active satellites are counted (set of entity ids, not a flag): duck on the first, restore on the last.
 - Pure logic (`areas.py`, `ducking.py`) takes data and returns a list of actions, with no Home Assistant access. Side effects live in `controller.py` only.
@@ -65,10 +65,8 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 
 - Ducking strength (default 50 %: each device is lowered by 50 % of its own volume).
 - Restore delay after `idle` (default 0 s), useful for follow-up conversations.
-- Excluded players and satellites.
-- Duck while a timer rings (default off).
+- Excluded players (for example a satellite's own player when it shows up a second time).
 - Groups that span several rooms: duck all or skip.
-- Optional: on/off switch per area.
 
 ## 6. Open design questions
 
@@ -86,10 +84,10 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 
 0. **Measurement with real hardware (before any code):** a Sendspin group with 2-3 devices. Set a volume through the Music Assistant player entity, the Music Assistant group entity and the ESPHome entity, and read all member volumes: same value, delta or proportional? How long until all values show in Home Assistant?
 1. Skeleton (done): manifest, config flow, CI.
-2. `areas.py` with tests: satellites and players per area.
-3. `ducking.py` with tests: plan and restore, owners, several satellites, groups.
-4. `controller.py`: state listeners, service calls, persistence.
-5. Options flow, translations, diagnostics.
+2. Satellites and players per area (done: `activity.py`, `players.py`; the area comes from Home Assistant's `async_get_effective_area_id`).
+3. `ducking.py` with tests: plan and restore, owners, several satellites, groups (done).
+4. `controller.py`: state listeners, service calls, persistence (done).
+5. Options flow and translations (done). Diagnostics not done.
 6. Hardware test: Linux Voice Assistant with a Sendspin group, Voice PE with an ESPHome player; measure latency.
 7. README with examples, optional ramp, optional per-area switch.
 
@@ -98,3 +96,24 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 - No control of the satellites themselves (Linux Voice Assistant and ESPHome duck their own music locally).
 - No change to ESPHome firmware or the ESPHome protocol. A real `duck` command would have to be added upstream.
 - No pausing instead of ducking (at most a later option).
+
+## 10. Implementation status
+
+Implemented:
+
+- `activity.py`: which satellites are busy per area (pure).
+- `ducking.py`: `plan_duck` and `plan_release` (pure). One device per group, group players never the target, relative reduction, only playing players with volume control, restore only when the volume is still the ducked one, several areas can share a lowered group.
+- `players.py`: reads the ESPHome and Music Assistant `media_player` states and areas.
+- `controller.py`: follows `assist_satellite` (platform `esphome`) and `media_player` states, ducks on the first busy satellite of an area, restores on the last, ducks players that start playing meanwhile, restore delay, restores on unload, persists the lowered players in a `Store` and restores them at startup.
+- Options flow: strength, restore delay, excluded players, skip groups that span several rooms.
+
+Heuristics that are not verified with hardware:
+
+- A Music Assistant group player is recognised as an entity that lists members but is not one of them. If Music Assistant also lists the leader or the group player itself, this has to be adjusted.
+- Players in the same group are found through the `group_members` attribute only.
+
+Not done:
+
+- Milestone 0 (measurement) and milestone 6 (hardware test, latency).
+- Merging the same hardware that shows up as an ESPHome player and as a Music Assistant player. Exclude the duplicate in the options until then.
+- Ducking while a timer rings, a per-area on/off switch, a volume ramp, diagnostics.
