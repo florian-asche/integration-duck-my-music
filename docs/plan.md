@@ -43,7 +43,7 @@ Rules:
 2. A device is touched only if its `media_player` is `playing`. Paused, stopped, off or unavailable players are left alone and are not restored either. A player that starts during ducking is ducked afterwards.
 3. Players without the `VOLUME_SET` feature are skipped.
 4. **One snapshot, then one change per player (decision 2026-11-25).** Temporarily assembled Sendspin players are not fixed groups, so a group is not treated as a unit. The volumes of all matching players are read in one step (no waiting between the reads), every target is computed from that snapshot and never from a volume an earlier change may have moved, and then each player is set on its own. If players are synchronized behind the scenes, the changes do not multiply (no 50 % of 50 %); the players that are synchronized end up at the value that was set last.
-5. Entities that only represent a group (Music Assistant `GROUP` players, the ESPHome Sendspin group player) are never targets themselves, otherwise their children would be lowered twice. They are recognised as entities that list `group_members` without being one of them.
+5. **Sync group players (decision 2026-11-25).** A Sendspin sync group player (Music Assistant `GROUP` player) that is playing is lowered or paused **instead of** its members; its members are not touched. It is recognised as an entity that lists `group_members` without being one of them (unverified). It is in the area if its own area or the area of one of its members matches. The group is left out, and its members are handled on their own, if it is excluded or not playing, cannot set the volume, or has an excluded member or the busy satellite's own player as a member. Music Assistant sets the members in proportion to the highest member volume, so the highest member volume (from the members' states) is lowered by the share and restored, while the group player's own reading (the average) is what is expected after lowering. Without member volumes the group player's own volume is used.
 6. Restore sets every player back to its snapshot volume. A player counts as unchanged if its current volume equals any of the lowered volumes, because a synchronized player can end up at the volume of another one.
 7. The reads and the changes are not repeated or verified afterwards.
 8. If the user changes a volume while ducked (current value differs from the ducked value), the stored entry is dropped and not restored.
@@ -101,7 +101,7 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 Implemented:
 
 - `activity.py`: which satellites are busy per area (pure).
-- `ducking.py`: `plan_duck` and `plan_release` (pure). Targets from one snapshot, one change per player, group players never the target, relative reduction, only playing players with volume control, restore only when the volume is still one of the lowered volumes.
+- `ducking.py`: `plan_duck` and `plan_release` (pure). Targets from one snapshot, one change per player, a playing sync group player instead of its members, relative reduction, only playing players with volume control, restore only when the volume is still one of the lowered volumes.
 - `players.py`: reads the ESPHome and Music Assistant `media_player` states and areas.
 - `controller.py`: follows `assist_satellite` (platform `esphome`) and `media_player` states, ducks on the first busy satellite of an area, restores on the last, ducks players that start playing meanwhile, restore delay, restores on unload, persists the lowered players in a `Store` and restores them at startup.
 - Options flow: mode (lower or pause), strength, restore delay, excluded players.
@@ -111,6 +111,7 @@ Implemented:
 Heuristics that are not verified with hardware:
 
 - A Music Assistant group player is recognised as an entity that lists members but is not one of them. If Music Assistant also lists the leader or the group player itself, this has to be adjusted.
+- Restoring a group player to the highest member volume relies on Music Assistant's proportional scaling from a cached snapshot of the members (read in its source, not tried with hardware).
 
 Not done:
 

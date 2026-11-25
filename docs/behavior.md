@@ -14,6 +14,7 @@ For the design background and the open points see [plan.md](plan.md).
 - [What happens to the music](#what-happens-to-the-music)
 - [When the music comes back](#when-the-music-comes-back)
 - [Several satellites and several rooms](#several-satellites-and-several-rooms)
+- [Sync group players](#sync-group-players)
 - [Synchronized players](#synchronized-players)
 - [When someone else changes the music](#when-someone-else-changes-the-music)
 - [Restarts and unloading](#restarts-and-unloading)
@@ -61,7 +62,7 @@ A player is lowered or paused only if **all** of these are true:
 | It supports setting the volume (mode *Lower the volume*) or pausing (mode *Pause and resume*) | Otherwise the command would fail |
 | It is not the satellite's own player (same device as the busy satellite) | The satellite lowers its own music |
 | It is not in the option *Players that are never lowered* | Your choice |
-| It does not only stand for a group (it lists group members but is not one of them) | Its members are handled on their own, otherwise they would be lowered twice |
+| It is not a member of a sync group player that is lowered instead | The group player is set, its members are not, otherwise they would be lowered twice (see [Sync group players](#sync-group-players)) |
 
 ---
 
@@ -108,11 +109,33 @@ When the **last** busy satellite in the area is `idle` again (or unavailable), a
 
 ---
 
+## Sync group players
+
+A Sendspin **sync group player** is a player of its own that has members. It is recognised as a player that lists group members but is not one of them.
+
+| Situation | What is lowered |
+|-----------|-----------------|
+| The group player is playing, and it or one of its members is in the area | Only the **group player**. Its members are not touched |
+| The group player is not playing | The members, each on its own (the normal rules) |
+| The group player or one of its members is in the options list of excluded players | The members, each on its own. The group is left out |
+| One of its members is the busy satellite's own player | The members, each on its own. The satellite's own player stays untouched |
+| The group player cannot set the volume (or pause) | The members, each on its own |
+
+Details:
+
+- The group player is handled like any other player: lowered by the set share (or paused), restored afterwards, left alone if someone else changed it.
+- The group player may have no area of its own. It then counts as being in the area if one of its members is.
+- A group can reach into other rooms. Lowering the group player lowers all of its members, also those in other rooms. This is a property of the group.
+- Music Assistant sets the members in proportion to the **highest** member volume. Therefore the volume that is lowered and restored is half of the highest member volume (the volume the group player itself reports is their average). If no member volume is known, the volume of the group player is used. With members at different volumes, each member ends up at the same share of its own volume and is restored to its old volume.
+- In mode *Pause and resume* the group player is paused and resumed, not its members.
+
+---
+
 ## Synchronized players
 
 Sendspin players can be put together temporarily, and some players follow the volume of others. The integration does not try to know that:
 
-- Every player is handled on its own, from the one snapshot.
+- Apart from a sync group player and its members, every player is handled on its own, from the one snapshot.
 - If players are synchronized, they can end up at the same value after the change (the one that was set last). Exactly 50 % per player is then not possible. This is a limit of the players, not of the integration.
 - When restoring, a player counts as unchanged if its volume is **any** of the lowered volumes, because a synchronized player can end up at the volume of another one.
 
@@ -166,6 +189,7 @@ The integration does not lock the volume and does not fight changes.
 | Last satellite of the area `idle` again | Restored (or resumed) |
 | Player started while the satellite is busy | Lowered (or paused) at once |
 | Player is not playing, has no volume control, or is the satellite's own | Not touched |
+| A sync group player is playing in the room | Only the group player is lowered, not its members |
 | Volume changed by someone else while lowered | Not restored, info message |
 | Satellite in another room | Music in this room not touched |
 | Home Assistant restarts while lowered | Restored at startup |

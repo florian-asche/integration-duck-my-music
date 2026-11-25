@@ -6,8 +6,8 @@ these functions and applies the returned actions.
 
 The volumes of all players are read in one step, and every target is computed
 from that snapshot, never from a volume that an earlier change may have moved
-(players can be synchronized without this integration knowing). The music is
-either lowered or paused.
+(players can be synchronized without this integration knowing). A sync group
+player is handled instead of its members. The music is either lowered or paused.
 """
 
 from __future__ import annotations
@@ -74,6 +74,7 @@ class DuckedPlayer:
     ducked_volume: float | None
     areas: frozenset[str]
     paused: bool = False
+    expected_volume: float | None = None
 
 
 @dataclass(frozen=True)
@@ -102,13 +103,34 @@ def plan_duck(
     :param excluded_devices: Devices whose players are never lowered, such as the busy satellite itself.
     :param ducked: The players that are lowered already.
     :param mode: ``"duck"`` lowers the volume, ``"pause"`` pauses the player.
-    :return: The changes to apply and the lowered players afterwards. Every player is handled on its own, with
-        a target computed from its own snapshot volume. Calling it again with the result as ``ducked`` changes nothing.
+    :return: The changes to apply and the lowered players afterwards. A group player that is playing in the area is
+        handled instead of its members, every other player on its own, with a target computed from its own
+        snapshot volume. Calling it again with the result as ``ducked`` changes nothing.
     """
     result = dict(ducked)
     actions: list[PlayerAction] = []
     _LOGGER.debug("Planning area '%s': %d players, mode %s, %.0f %% reduction", area_id, len(players), mode, duck_fraction * 100)
+    by_id = {player.entity_id: player for player in players}
+    covered: dict[str, str] = {}
+    for group in sorted((player for player in players if _is_group_player(player)), key=lambda candidate: candidate.entity_id):
+        members = tuple(by_id[member] for member in group.group_members if member in by_id)
+        reason = _group_rejection_reason(group, members, area_id, excluded_entities, excluded_devices, mode)
+        if reason is not None:
+            _LOGGER.debug("Group player '%s' not lowered: %s", group.entity_id, reason)
+            continue
+        covered.update({member.entity_id: group.entity_id for member in members})
+        if group.entity_id in result:
+            _LOGGER.debug("Group player '%s' is lowered already", group.entity_id)
+            continue
+        action = _plan_group(group, members, area_id, duck_fraction, mode, result)
+        if action is not None:
+            actions.append(action)
     for player in sorted(players, key=lambda candidate: candidate.entity_id):
+        if _is_group_player(player):
+            continue
+        if player.entity_id in covered:
+            _LOGGER.debug("Player '%s' not lowered on its own: its group player '%s' is lowered instead", player.entity_id, covered[player.entity_id])
+            continue
         reason = _rejection_reason(player, area_id, excluded_entities, excluded_devices, mode)
         if reason is not None:
             _LOGGER.debug("Player '%s' not lowered: %s", player.entity_id, reason)
@@ -144,11 +166,15 @@ def plan_release(area_id: str | None, ducked: Mapping[str, DuckedPlayer], curren
     """
     remaining: dict[str, DuckedPlayer] = {}
     actions: list[PlayerAction] = []
-    lowered_volumes = [player.ducked_volume for player in ducked.values() if player.ducked_volume is not None]
+    lowered_volumes = [
+        player.expected_volume if player.expected_volume is not None else player.ducked_volume
+        for player in ducked.values()
+        if player.expected_volume is not None or player.ducked_volume is not None
+    ]
     for entity_id, player in ducked.items():
         areas = player.areas - {area_id} if area_id is not None else frozenset()
         if areas:
-            remaining[entity_id] = DuckedPlayer(entity_id, player.original_volume, player.ducked_volume, areas, player.paused)
+            remaining[entity_id] = DuckedPlayer(entity_id, player.original_volume, player.ducked_volume, areas, player.paused, player.expected_volume)
             continue
         now = current.get(entity_id, CurrentPlayer(None, None))
         if player.paused:
@@ -173,7 +199,14 @@ def plan_release(area_id: str | None, ducked: Mapping[str, DuckedPlayer], curren
 def ducked_to_data(ducked: Mapping[str, DuckedPlayer]) -> list[dict[str, Any]]:
     """The lowered players as plain data for storage."""
     return [
-        {"entity_id": p.entity_id, "original_volume": p.original_volume, "ducked_volume": p.ducked_volume, "areas": sorted(p.areas), "paused": p.paused}
+        {
+            "entity_id": p.entity_id,
+            "original_volume": p.original_volume,
+            "ducked_volume": p.ducked_volume,
+            "areas": sorted(p.areas),
+            "paused": p.paused,
+            "expected_volume": p.expected_volume,
+        }
         for p in ducked.values()
     ]
 
@@ -181,9 +214,64 @@ def ducked_to_data(ducked: Mapping[str, DuckedPlayer]) -> list[dict[str, Any]]:
 def ducked_from_data(data: list[dict[str, Any]]) -> dict[str, DuckedPlayer]:
     """The lowered players from what ducked_to_data stored."""
     return {
-        item["entity_id"]: DuckedPlayer(item["entity_id"], item["original_volume"], item["ducked_volume"], frozenset(item["areas"]), item.get("paused", False))
+        item["entity_id"]: DuckedPlayer(item["entity_id"], item["original_volume"], item["ducked_volume"], frozenset(item["areas"]), item.get("paused", False), item.get("expected_volume"))
         for item in data
     }
+
+
+def _plan_group(
+    group: PlayerSnapshot, members: tuple[PlayerSnapshot, ...], area_id: str, duck_fraction: float, mode: str, result: dict[str, DuckedPlayer]
+) -> PlayerAction | None:
+    """
+    Plan a sync group player: it is set, and its members are not.
+
+    Music Assistant scales the members in proportion to the highest of them, so the highest member volume is
+    the volume to lower and to restore. The volume the group player reports (the average of its members) is
+    what to expect after lowering.
+    """
+    if mode == MODE_PAUSE:
+        _LOGGER.debug("Pausing group player '%s' in area '%s'", group.entity_id, area_id)
+        result[group.entity_id] = DuckedPlayer(group.entity_id, None, None, frozenset({area_id}), paused=True)
+        return PlayerAction(group.entity_id, ActionKind.PAUSE)
+    levels = [member.volume for member in members if member.volume is not None]
+    base = max(levels) if levels else group.volume
+    if base is None or base <= 0:
+        _LOGGER.debug("Group player '%s' has volume %s, nothing to lower", group.entity_id, base)
+        return None
+    ducked_volume = round(base * (1 - duck_fraction), 4)
+    expected = round(group.volume * (1 - duck_fraction), 4) if group.volume is not None else ducked_volume
+    _LOGGER.debug("Lowering group player '%s' in area '%s' from %.2f to %.2f (it reports %s)", group.entity_id, area_id, base, ducked_volume, group.volume)
+    result[group.entity_id] = DuckedPlayer(group.entity_id, base, ducked_volume, frozenset({area_id}), expected_volume=expected)
+    return PlayerAction(group.entity_id, ActionKind.VOLUME, ducked_volume, base)
+
+
+def _group_rejection_reason(
+    group: PlayerSnapshot,
+    members: tuple[PlayerSnapshot, ...],
+    area_id: str,
+    excluded_entities: Collection[str],
+    excluded_devices: Collection[str],
+    mode: str,
+) -> str | None:
+    """Why a group player is not lowered for an area, or None if it is."""
+    if group.entity_id in excluded_entities:
+        return "it is excluded in the options"
+    if group.device_id is not None and group.device_id in excluded_devices:
+        return "it belongs to the busy satellite's own device"
+    for member in members:
+        if member.entity_id in excluded_entities:
+            return f"its member '{member.entity_id}' is excluded in the options, so the members are handled on their own"
+        if member.device_id is not None and member.device_id in excluded_devices:
+            return f"its member '{member.entity_id}' belongs to the busy satellite's own device, so the members are handled on their own"
+    if group.area_id != area_id and not any(member.area_id == area_id for member in members):
+        return f"neither it nor its members are in area '{area_id}'"
+    if not group.playing:
+        return "it is not playing"
+    if mode == MODE_PAUSE and not group.can_pause:
+        return "it does not support pause"
+    if mode != MODE_PAUSE and not group.can_set_volume:
+        return "it does not support setting the volume"
+    return None
 
 
 def _is_group_player(player: PlayerSnapshot) -> bool:
@@ -199,8 +287,6 @@ def _rejection_reason(player: PlayerSnapshot, area_id: str, excluded_entities: C
         return "it is excluded in the options"
     if player.device_id is not None and player.device_id in excluded_devices:
         return "it belongs to the busy satellite's own device"
-    if _is_group_player(player):
-        return "it only represents a group (lists members but is none of them)"
     if not player.playing:
         return "it is not playing"
     if mode == MODE_PAUSE and not player.can_pause:

@@ -63,14 +63,6 @@ def test_excluded_player_and_device_are_left_alone() -> None:
 
 
 
-def test_group_player_is_never_the_target() -> None:
-    group = player("media_player.group", 0.9, group_members=("media_player.a", "media_player.b"))
-    plan = duck([group, player("media_player.a", group_members=("media_player.a", "media_player.b")), player("media_player.b")])
-    assert [action.entity_id for action in plan.actions] == ["media_player.a", "media_player.b"]
-
-
-
-
 
 def test_planning_again_changes_nothing() -> None:
     players = [player("media_player.a")]
@@ -134,7 +126,6 @@ def test_ducked_players_survive_storage() -> None:
         ({"area_id": "bedroom"}, {}, "it is in area 'bedroom', not 'kitchen'"),
         ({"device_id": "sat"}, {"excluded_devices": ["sat"]}, "it belongs to the busy satellite's own device"),
         ({}, {"excluded_entities": ["media_player.a"]}, "it is excluded in the options"),
-        ({"group_members": ("media_player.b",)}, {}, "it only represents a group"),
     ],
 )
 def test_the_reason_a_player_is_not_lowered_is_logged(caplog: pytest.LogCaptureFixture, other, excluded, reason) -> None:
@@ -203,3 +194,97 @@ def test_release_does_not_restore_a_volume_that_matches_none_of_the_lowered_volu
     ducked = duck([player("media_player.a", 0.6), player("media_player.b", 0.4)]).ducked
     plan = plan_release("kitchen", ducked, {"media_player.a": current(0.2), "media_player.b": current(0.9)})
     assert plan.actions == (PlayerAction("media_player.a", ActionKind.VOLUME, 0.6, 0.2),)
+
+
+MEMBERS = ("media_player.a", "media_player.b")
+
+
+def sync_group(volume: float | None = 0.5, area_id: str | None = None, **kwargs) -> PlayerSnapshot:
+    return player("media_player.group", volume, area_id=area_id, group_members=MEMBERS, **kwargs)
+
+
+def test_sync_group_player_is_lowered_instead_of_its_members() -> None:
+    plan = duck([sync_group(0.5), player("media_player.a", 0.6), player("media_player.b", 0.4)])
+    assert plan.actions == (lowered("media_player.group", 0.3, 0.6),)
+    assert list(plan.ducked) == ["media_player.group"]
+
+
+def test_sync_group_player_is_lowered_by_the_highest_member_volume_and_expects_half_of_its_own_volume() -> None:
+    plan = duck([sync_group(0.5), player("media_player.a", 0.6), player("media_player.b", 0.4)])
+    assert plan.ducked["media_player.group"] == DuckedPlayer("media_player.group", 0.6, 0.3, frozenset({"kitchen"}), expected_volume=0.25)
+
+
+def test_sync_group_player_without_member_volumes_uses_its_own_volume() -> None:
+    plan = duck([sync_group(0.5, area_id="kitchen")])
+    assert plan.actions == (lowered("media_player.group", 0.25, 0.5),)
+
+
+def test_sync_group_player_without_an_area_counts_through_a_member_in_the_area() -> None:
+    plan = duck([sync_group(area_id=None), player("media_player.a", area_id="kitchen"), player("media_player.b", area_id="bedroom")])
+    assert [action.entity_id for action in plan.actions] == ["media_player.group"]
+
+
+def test_sync_group_player_in_another_area_is_left_alone() -> None:
+    plan = duck([sync_group(area_id="bedroom"), player("media_player.a", area_id="bedroom"), player("media_player.b", area_id="bedroom")])
+    assert plan.actions == ()
+
+
+def test_members_are_lowered_on_their_own_while_the_group_player_is_not_playing(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.DEBUG):
+        plan = duck([sync_group(playing=False), player("media_player.a", 0.6), player("media_player.b", 0.4)])
+    assert [action.entity_id for action in plan.actions] == ["media_player.a", "media_player.b"]
+    assert "Group player 'media_player.group' not lowered: it is not playing" in caplog.text
+
+
+def test_group_player_that_cannot_set_the_volume_leaves_the_members_to_themselves() -> None:
+    plan = duck([sync_group(can_set_volume=False), player("media_player.a", 0.6), player("media_player.b", 0.4)])
+    assert [action.entity_id for action in plan.actions] == ["media_player.a", "media_player.b"]
+
+
+def test_group_with_the_satellites_own_player_is_not_lowered_as_a_whole(caplog: pytest.LogCaptureFixture) -> None:
+    players = [sync_group(), player("media_player.a", 0.6, device_id="satellite-device"), player("media_player.b", 0.4)]
+    with caplog.at_level(logging.DEBUG):
+        plan = duck(players, excluded_devices=["satellite-device"])
+    assert [action.entity_id for action in plan.actions] == ["media_player.b"]
+    assert "its member 'media_player.a' belongs to the busy satellite's own device" in caplog.text
+
+
+def test_group_with_an_excluded_member_is_not_lowered_as_a_whole() -> None:
+    plan = duck([sync_group(), player("media_player.a", 0.6), player("media_player.b", 0.4)], excluded_entities=["media_player.a"])
+    assert [action.entity_id for action in plan.actions] == ["media_player.b"]
+
+
+def test_excluded_group_player_is_not_lowered_and_its_members_are_handled_on_their_own() -> None:
+    plan = duck([sync_group(), player("media_player.a", 0.6), player("media_player.b", 0.4)], excluded_entities=["media_player.group"])
+    assert [action.entity_id for action in plan.actions] == ["media_player.a", "media_player.b"]
+
+
+def test_member_of_a_lowered_group_is_not_lowered_when_planning_again(caplog: pytest.LogCaptureFixture) -> None:
+    players = [sync_group(), player("media_player.a", 0.6), player("media_player.b", 0.4)]
+    first = duck(players)
+    with caplog.at_level(logging.DEBUG):
+        second = duck(players, ducked=first.ducked)
+    assert second.actions == ()
+    assert second.ducked == first.ducked
+    assert "Player 'media_player.a' not lowered on its own: its group player 'media_player.group' is lowered instead" in caplog.text
+
+
+def test_pause_mode_pauses_the_group_player_and_not_its_members() -> None:
+    plan = duck([sync_group(), player("media_player.a"), player("media_player.b")], mode="pause")
+    assert plan.actions == (PlayerAction("media_player.group", ActionKind.PAUSE),)
+
+
+def test_release_restores_a_group_player_to_the_highest_member_volume() -> None:
+    ducked = duck([sync_group(0.5), player("media_player.a", 0.6), player("media_player.b", 0.4)]).ducked
+    plan = plan_release("kitchen", ducked, {"media_player.group": current(0.25)})
+    assert plan.actions == (PlayerAction("media_player.group", ActionKind.VOLUME, 0.6, 0.25),)
+
+
+def test_release_does_not_restore_a_group_player_whose_volume_was_changed() -> None:
+    ducked = duck([sync_group(0.5), player("media_player.a", 0.6), player("media_player.b", 0.4)]).ducked
+    assert plan_release("kitchen", ducked, {"media_player.group": current(0.9)}).actions == ()
+
+
+def test_group_player_survives_storage() -> None:
+    ducked = duck([sync_group(0.5), player("media_player.a", 0.6), player("media_player.b", 0.4)]).ducked
+    assert ducked_from_data(ducked_to_data(ducked)) == ducked

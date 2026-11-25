@@ -294,3 +294,27 @@ async def test_failed_service_call_leaves_no_activity_entry(hass: HomeAssistant)
     hass.states.async_set("assist_satellite.kitchen", "listening")
     await hass.async_block_till_done()
     assert entries == []
+
+
+async def test_sync_group_player_is_set_and_its_members_are_not(hass: HomeAssistant) -> None:
+    kitchen = ar.async_get(hass).async_create("Kitchen").id
+    add_entity(hass, "assist_satellite.kitchen", "esphome", kitchen)
+    add_entity(hass, "media_player.group", "music_assistant", None)
+    add_entity(hass, "media_player.one", "music_assistant", kitchen)
+    add_entity(hass, "media_player.two", "music_assistant", kitchen)
+    members = ["media_player.one", "media_player.two"]
+    set_player(hass, "media_player.group", 0.5, group_members=members)
+    set_player(hass, "media_player.one", 0.6, group_members=members)
+    set_player(hass, "media_player.two", 0.4, group_members=members)
+    calls = async_mock_service(hass, "media_player", "volume_set")
+    await setup_controller(hass)
+
+    hass.states.async_set("assist_satellite.kitchen", "listening")
+    await hass.async_block_till_done()
+    assert volumes(calls) == [("media_player.group", 0.3)]
+
+    calls.clear()
+    set_player(hass, "media_player.group", 0.25, group_members=members)
+    hass.states.async_set("assist_satellite.kitchen", "idle")
+    await hass.async_block_till_done()
+    assert volumes(calls) == [("media_player.group", 0.6)]
