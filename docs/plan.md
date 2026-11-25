@@ -119,3 +119,24 @@ Not done:
 - Milestone 0 (measurement) and milestone 6 (hardware test, latency).
 - Merging the same hardware that shows up as an ESPHome player and as a Music Assistant player. Exclude the duplicate in the options until then.
 - Ducking while a timer rings, a per-area on/off switch, a volume ramp, diagnostics.
+
+## 11. Locking the volume while lowered (research, 2026-11-25)
+
+Question: can the volume be locked while the music is lowered, so that nothing else changes it?
+
+Verified in the sources:
+
+- **Home Assistant:** `media_player` has no lock. The volume slider of a player belongs to the integration that provides the entity (ESPHome, Music Assistant); this integration cannot disable or grey it out.
+- **ESPHome native API:** no lock and no duck command (see section 2).
+- **Sendspin spec:** no lock, no limit and no duck command. A player only declares which commands it accepts (`supported_commands`); the server cannot lock the volume of a client. Ducking is only mentioned as a local, temporary output effect of a client. Volume and mute are independent.
+- **Music Assistant public API (`players/cmd/*`):** `volume_set`, `volume_up`, `volume_down`, `volume_mute`, `group_volume*`, `play_announcement`, `group`, `ungroup`, `set_members`. No lock and no duck command. Internal volume locks exist only to serialize commands. A mute lock exists internally for players in groups and is not exposed.
+- **Music Assistant per-player volume limits (min/max):** a configuration of the player, not a runtime lock. They only clamp a device volume that is outside the range. Setting min and max to the ducked value through the configuration API would act like a lock, but it rewrites the user's player configuration and has to be undone reliably (also after a crash). Not recommended.
+- **Music Assistant announcements (`play_announcement`):** Music Assistant lowers or raises a player for an announcement and restores the previous volume itself (strategies none, absolute, relative, percentual). That is for announcements Music Assistant plays, not for a satellite that is busy, so it does not replace this integration.
+
+Options for this integration:
+
+1. **Do not lock (current).** If someone changes the volume while it is lowered, the player is not restored afterwards (section 3, rule 8). Nothing fights the user.
+2. **Revert changes while lowered (possible, not built).** Watch the volume of lowered players and set it back to the ducked value when it differs. Drawbacks: the volume flickers, a Sendspin group moves together and could start a loop with other members' reports, and it overrides a deliberate change by the user. Physical knobs and other apps cannot be stopped from changing it first.
+3. **Treat a change as the new level (possible, not built).** If the volume is changed while lowered, restore to the new level divided by the ducked fraction instead of dropping the entry. Avoids fighting the user, but the result is a guess.
+
+Recommendation: stay with option 1. Add option 2 only as an opt-in setting if it turns out to be needed.
