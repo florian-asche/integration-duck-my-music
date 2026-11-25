@@ -105,7 +105,9 @@ Implemented:
 - `ducking.py`: `plan_duck` and `plan_release` (pure). One device per group, group players never the target, relative reduction, only playing players with volume control, restore only when the volume is still the ducked one, several areas can share a lowered group.
 - `players.py`: reads the ESPHome and Music Assistant `media_player` states and areas.
 - `controller.py`: follows `assist_satellite` (platform `esphome`) and `media_player` states, ducks on the first busy satellite of an area, restores on the last, ducks players that start playing meanwhile, restore delay, restores on unload, persists the lowered players in a `Store` and restores them at startup.
-- Options flow: strength, restore delay, excluded players, skip groups that span several rooms.
+- Options flow: mode (lower or pause), strength, restore delay, excluded players, skip groups that span several rooms.
+- Pause mode: the playing player of each group in the room is paused with `media_player.media_pause` and resumed with `media_player.media_play` once the area is quiet, only if it is still paused. Needs the `PAUSE` feature, not volume control. Pausing a Sendspin group member is assumed to pause the whole group (*unverified*).
+- Activity: every volume change, pause and resume fires a `logbook_entry` event for the player, so it shows on the player's and its device's activity.
 
 Heuristics that are not verified with hardware:
 

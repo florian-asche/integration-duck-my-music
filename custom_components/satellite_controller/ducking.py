@@ -4,17 +4,20 @@ Everything here is a pure function over snapshots of the players: no Home
 Assistant access, no service calls. The controller reads the snapshots, calls
 these functions and applies the returned actions.
 
-Players that are in the same group are lowered as one unit, through a single
-device of the group, because changing the volume of one member can change the
-others as well.
+Players that are in the same group are handled as one unit, through a single
+device of the group, because changing the volume of one member (or pausing it)
+can change the others as well. The music is either lowered or paused.
 """
 
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 import logging
 from typing import Any
+
+from .const import MODE_PAUSE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,32 +34,52 @@ class PlayerSnapshot:
     playing: bool
     volume: float | None
     can_set_volume: bool
+    can_pause: bool = False
     group_members: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
-class VolumeAction:
-    """Set a player to this volume (0..1)."""
+class CurrentPlayer:
+    """The state and volume of a player right now."""
+
+    state: str | None
+    volume: float | None
+
+
+class ActionKind(StrEnum):
+    """What to do to a player."""
+
+    VOLUME = "volume"
+    PAUSE = "pause"
+    RESUME = "resume"
+
+
+@dataclass(frozen=True)
+class PlayerAction:
+    """Set a player to a volume (0..1), pause it or resume it. ``previous_volume`` is what it had before a volume change."""
 
     entity_id: str
-    volume: float
+    kind: ActionKind
+    volume: float | None = None
+    previous_volume: float | None = None
 
 
 @dataclass(frozen=True)
 class DuckedPlayer:
-    """A player that was lowered, and the areas that are keeping it lowered."""
+    """A player that was lowered or paused, and the areas that are keeping it that way."""
 
     entity_id: str
-    original_volume: float
-    ducked_volume: float
+    original_volume: float | None
+    ducked_volume: float | None
     areas: frozenset[str]
+    paused: bool = False
 
 
 @dataclass(frozen=True)
 class DuckPlan:
     """The volume changes to apply and the lowered players afterwards."""
 
-    actions: tuple[VolumeAction, ...]
+    actions: tuple[PlayerAction, ...]
     ducked: Mapping[str, DuckedPlayer]
 
 
@@ -68,9 +91,10 @@ def plan_duck(
     excluded_devices: Collection[str],
     ducked: Mapping[str, DuckedPlayer],
     skip_multi_room_groups: bool,
+    mode: str,
 ) -> DuckPlan:
     """
-    Plan lowering the music in an area.
+    Plan lowering or pausing the music in an area.
     :param players: Snapshots of all players that may be lowered, in any area.
     :param area_id: The area whose satellite became busy.
     :param duck_fraction: How much of its own volume each player loses (0.5 halves it).
@@ -78,65 +102,79 @@ def plan_duck(
     :param excluded_devices: Devices whose players are never lowered, such as the busy satellite itself.
     :param ducked: The players that are lowered already.
     :param skip_multi_room_groups: Leave groups alone that have members in other areas.
+    :param mode: ``"duck"`` lowers the volume, ``"pause"`` pauses the player.
     :return: The volume changes to apply and the lowered players afterwards. Calling it again with the
         result as ``ducked`` changes nothing.
     """
     result = dict(ducked)
-    actions: list[VolumeAction] = []
+    actions: list[PlayerAction] = []
     groups = _groups(players)
-    _LOGGER.debug("Planning area '%s': %d players in %d groups, %.0f %% reduction", area_id, len(players), len(groups), duck_fraction * 100)
+    _LOGGER.debug("Planning area '%s': %d players in %d groups, mode %s, %.0f %% reduction", area_id, len(players), len(groups), mode, duck_fraction * 100)
     for group in groups:
         names = ", ".join(player.entity_id for player in group)
         if _is_ducked(group, result):
             _LOGGER.debug("Group [%s] is lowered already, area '%s' now keeps it lowered too", names, area_id)
             result = _keep_ducked(group, result, area_id)
             continue
-        target = _select_target(group, area_id, excluded_entities, excluded_devices)
+        target = _select_target(group, area_id, excluded_entities, excluded_devices, mode)
         if target is None:
             _LOGGER.debug("Group [%s]: nothing to lower in area '%s'", names, area_id)
             continue
-        if target.volume is None or target.volume <= 0:
+        if mode != MODE_PAUSE and (target.volume is None or target.volume <= 0):
             _LOGGER.debug("Group [%s]: '%s' has volume %s, nothing to lower", names, target.entity_id, target.volume)
             continue
         if skip_multi_room_groups and _spans_other_areas(group, area_id):
             _LOGGER.debug("Group of '%s' has members outside area '%s', skipped", target.entity_id, area_id)
             continue
+        if mode == MODE_PAUSE:
+            _LOGGER.debug("Pausing '%s' in area '%s'", target.entity_id, area_id)
+            actions.append(PlayerAction(target.entity_id, ActionKind.PAUSE))
+            result[target.entity_id] = DuckedPlayer(target.entity_id, None, None, frozenset({area_id}), paused=True)
+            continue
+        assert target.volume is not None
         ducked_volume = round(target.volume * (1 - duck_fraction), 4)
         _LOGGER.debug("Lowering '%s' in area '%s' from %.2f to %.2f", target.entity_id, area_id, target.volume, ducked_volume)
-        actions.append(VolumeAction(target.entity_id, ducked_volume))
+        actions.append(PlayerAction(target.entity_id, ActionKind.VOLUME, ducked_volume, target.volume))
         result[target.entity_id] = DuckedPlayer(target.entity_id, target.volume, ducked_volume, frozenset({area_id}))
     return DuckPlan(actions=tuple(actions), ducked=result)
 
 
-def plan_release(area_id: str | None, ducked: Mapping[str, DuckedPlayer], current_volumes: Mapping[str, float | None]) -> DuckPlan:
+def plan_release(area_id: str | None, ducked: Mapping[str, DuckedPlayer], current: Mapping[str, CurrentPlayer]) -> DuckPlan:
     """
     Plan restoring the music of an area, or of all areas.
     :param area_id: The area whose satellite is quiet again, ``None`` for all areas.
-    :param ducked: The players that are lowered.
-    :param current_volumes: The current volume of each player, ``None`` if it has none.
-    :return: The volume changes to apply and the players that stay lowered. A player that another area
-        still keeps lowered stays. A player whose volume was changed by someone else is not restored.
+    :param ducked: The players that are lowered or paused.
+    :param current: The current state and volume of each player.
+    :return: The changes to apply and the players that stay lowered or paused. A player that another area
+        still keeps that way stays. A player whose volume was changed, or that was resumed or stopped by
+        someone else, is left as it is.
     """
     remaining: dict[str, DuckedPlayer] = {}
-    actions: list[VolumeAction] = []
+    actions: list[PlayerAction] = []
     for entity_id, player in ducked.items():
         areas = player.areas - {area_id} if area_id is not None else frozenset()
         if areas:
-            remaining[entity_id] = DuckedPlayer(entity_id, player.original_volume, player.ducked_volume, areas)
+            remaining[entity_id] = DuckedPlayer(entity_id, player.original_volume, player.ducked_volume, areas, player.paused)
             continue
-        current = current_volumes.get(entity_id)
-        if current is not None and abs(current - player.ducked_volume) <= VOLUME_TOLERANCE:
-            _LOGGER.debug("Restoring '%s' from %.2f to %.2f", entity_id, current, player.original_volume)
-            actions.append(VolumeAction(entity_id, player.original_volume))
+        now = current.get(entity_id, CurrentPlayer(None, None))
+        if player.paused:
+            if now.state == "paused":
+                _LOGGER.debug("Resuming '%s'", entity_id)
+                actions.append(PlayerAction(entity_id, ActionKind.RESUME))
+            else:
+                _LOGGER.debug("Not resuming '%s': state is %s, expected paused", entity_id, now.state)
+        elif player.ducked_volume is not None and player.original_volume is not None and now.volume is not None and abs(now.volume - player.ducked_volume) <= VOLUME_TOLERANCE:
+            _LOGGER.debug("Restoring '%s' from %.2f to %.2f", entity_id, now.volume, player.original_volume)
+            actions.append(PlayerAction(entity_id, ActionKind.VOLUME, player.original_volume, now.volume))
         else:
-            _LOGGER.debug("Not restoring '%s': volume is %s, expected %.2f", entity_id, current, player.ducked_volume)
+            _LOGGER.debug("Not restoring '%s': volume is %s, expected %s", entity_id, now.volume, player.ducked_volume)
     return DuckPlan(actions=tuple(actions), ducked=remaining)
 
 
 def ducked_to_data(ducked: Mapping[str, DuckedPlayer]) -> list[dict[str, Any]]:
     """The lowered players as plain data for storage."""
     return [
-        {"entity_id": p.entity_id, "original_volume": p.original_volume, "ducked_volume": p.ducked_volume, "areas": sorted(p.areas)}
+        {"entity_id": p.entity_id, "original_volume": p.original_volume, "ducked_volume": p.ducked_volume, "areas": sorted(p.areas), "paused": p.paused}
         for p in ducked.values()
     ]
 
@@ -144,7 +182,7 @@ def ducked_to_data(ducked: Mapping[str, DuckedPlayer]) -> list[dict[str, Any]]:
 def ducked_from_data(data: list[dict[str, Any]]) -> dict[str, DuckedPlayer]:
     """The lowered players from what ducked_to_data stored."""
     return {
-        item["entity_id"]: DuckedPlayer(item["entity_id"], item["original_volume"], item["ducked_volume"], frozenset(item["areas"]))
+        item["entity_id"]: DuckedPlayer(item["entity_id"], item["original_volume"], item["ducked_volume"], frozenset(item["areas"]), item.get("paused", False))
         for item in data
     }
 
@@ -177,12 +215,12 @@ def _is_group_player(player: PlayerSnapshot) -> bool:
 
 
 def _select_target(
-    group: tuple[PlayerSnapshot, ...], area_id: str, excluded_entities: Collection[str], excluded_devices: Collection[str]
+    group: tuple[PlayerSnapshot, ...], area_id: str, excluded_entities: Collection[str], excluded_devices: Collection[str], mode: str
 ) -> PlayerSnapshot | None:
-    """The one player of a group to lower: a playing one in the area, or None if the group is not playing there."""
+    """The one player of a group to lower or pause: a playing one in the area, or None if the group is not playing there."""
     in_area = []
     for player in group:
-        reason = _rejection_reason(player, area_id, excluded_entities, excluded_devices)
+        reason = _rejection_reason(player, area_id, excluded_entities, excluded_devices, mode)
         if reason is None:
             in_area.append(player)
         else:
@@ -190,7 +228,7 @@ def _select_target(
     return in_area[0] if in_area else None
 
 
-def _rejection_reason(player: PlayerSnapshot, area_id: str, excluded_entities: Collection[str], excluded_devices: Collection[str]) -> str | None:
+def _rejection_reason(player: PlayerSnapshot, area_id: str, excluded_entities: Collection[str], excluded_devices: Collection[str], mode: str) -> str | None:
     """Why a player is not lowered for an area, or None if it is a candidate."""
     if player.area_id != area_id:
         return f"it is in area '{player.area_id}', not '{area_id}'"
@@ -202,7 +240,9 @@ def _rejection_reason(player: PlayerSnapshot, area_id: str, excluded_entities: C
         return "it only represents a group (lists members but is none of them)"
     if not player.playing:
         return "it is not playing"
-    if not player.can_set_volume:
+    if mode == MODE_PAUSE and not player.can_pause:
+        return "it does not support pause"
+    if mode != MODE_PAUSE and not player.can_set_volume:
         return "it does not support setting the volume"
     return None
 
@@ -223,5 +263,5 @@ def _keep_ducked(group: tuple[PlayerSnapshot, ...], ducked: dict[str, DuckedPlay
     for player in group:
         if player.entity_id in updated:
             current = updated[player.entity_id]
-            updated[player.entity_id] = DuckedPlayer(current.entity_id, current.original_volume, current.ducked_volume, current.areas | {area_id})
+            updated[player.entity_id] = DuckedPlayer(current.entity_id, current.original_volume, current.ducked_volume, current.areas | {area_id}, current.paused)
     return updated

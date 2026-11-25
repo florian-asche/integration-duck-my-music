@@ -15,7 +15,7 @@ import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_STATE_CHANGED
+from homeassistant.const import EVENT_LOGBOOK_ENTRY, EVENT_STATE_CHANGED
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
@@ -26,17 +26,21 @@ from .activity import update_activity
 from .const import (
     CONF_DUCK_PERCENT,
     CONF_EXCLUDED_ENTITIES,
+    CONF_MODE,
     CONF_RESTORE_DELAY,
     CONF_SKIP_MULTI_ROOM_GROUPS,
     DEFAULT_DUCK_PERCENT,
+    DEFAULT_MODE,
     DEFAULT_RESTORE_DELAY,
     DEFAULT_SKIP_MULTI_ROOM_GROUPS,
+    DOMAIN,
     SATELLITE_PLATFORM,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
-from .ducking import DuckedPlayer, DuckPlan, VolumeAction, ducked_from_data, ducked_to_data, plan_duck, plan_release
-from .players import collect_players, current_volumes
+from .ducking import ActionKind, DuckedPlayer, DuckPlan, PlayerAction, ducked_from_data, ducked_to_data, plan_duck, plan_release
+from .logbook import LOGBOOK_NAME, describe_action
+from .players import collect_players, current_players
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -137,6 +141,7 @@ class SatelliteController:
                 {device for device in devices if device is not None},
                 self._ducked,
                 bool(options.get(CONF_SKIP_MULTI_ROOM_GROUPS, DEFAULT_SKIP_MULTI_ROOM_GROUPS)),
+                options.get(CONF_MODE, DEFAULT_MODE),
             )
             _LOGGER.debug("Area '%s': %d volume changes planned, %d players lowered afterwards", area_id, len(plan.actions), len(plan.ducked))
             await self._async_apply(plan)
@@ -151,22 +156,35 @@ class SatelliteController:
 
     async def _async_release(self, area_id: str | None) -> None:
         """Restore the players of an area, or of all areas. Call with the lock held."""
-        volumes = current_volumes(self._hass, list(self._ducked))
-        await self._async_apply(plan_release(area_id, self._ducked, volumes))
+        current = current_players(self._hass, list(self._ducked))
+        await self._async_apply(plan_release(area_id, self._ducked, current))
 
     async def _async_apply(self, plan: DuckPlan) -> None:
         self._ducked = plan.ducked
-        await asyncio.gather(*(self._async_set_volume(action) for action in plan.actions))
+        await asyncio.gather(*(self._async_perform(action) for action in plan.actions))
         await self._store.async_save({"ducked": ducked_to_data(self._ducked)})
 
-    async def _async_set_volume(self, action: VolumeAction) -> None:
-        _LOGGER.debug("Calling media_player.volume_set for '%s' with %.2f", action.entity_id, action.volume)
+    async def _async_perform(self, action: PlayerAction) -> None:
+        """Call the media player service for an action and, if it worked, show it on the player's activity."""
+        service, data = _service_call(action)
+        _LOGGER.debug("Calling media_player.%s for '%s' %s", service, action.entity_id, data)
         try:
-            await self._hass.services.async_call(
-                "media_player", "volume_set", {"entity_id": action.entity_id, "volume_level": action.volume}, blocking=True
-            )
+            await self._hass.services.async_call("media_player", service, data, blocking=True)
         except HomeAssistantError as err:
-            _LOGGER.warning("Could not set the volume of '%s' to %.2f: %s", action.entity_id, action.volume, err)
+            _LOGGER.warning("Could not call media_player.%s for '%s': %s", service, action.entity_id, err)
+            return
+        message = describe_action(action)
+        _LOGGER.debug("Logbook entry for '%s': %s %s", action.entity_id, LOGBOOK_NAME, message)
+        self._hass.bus.async_fire(EVENT_LOGBOOK_ENTRY, {"name": LOGBOOK_NAME, "message": message, "domain": DOMAIN, "entity_id": action.entity_id})
+
+
+def _service_call(action: PlayerAction) -> tuple[str, dict[str, Any]]:
+    """The media_player service and its data for an action."""
+    if action.kind is ActionKind.PAUSE:
+        return "media_pause", {"entity_id": action.entity_id}
+    if action.kind is ActionKind.RESUME:
+        return "media_play", {"entity_id": action.entity_id}
+    return "volume_set", {"entity_id": action.entity_id, "volume_level": action.volume}
 
 
 @callback

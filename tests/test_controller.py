@@ -3,12 +3,13 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 
-from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed, async_mock_service
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_fire_time_changed, async_mock_service
 
 from custom_components.satellite_controller.const import DOMAIN
 
 VOLUME_SET = 4
-PLAYING = {"supported_features": VOLUME_SET}
+PAUSE = 1
+PLAYING = {"supported_features": VOLUME_SET | PAUSE}
 
 
 def add_entity(hass: HomeAssistant, entity_id: str, platform: str, area_id: str | None, device_id: str | None = None) -> None:
@@ -219,5 +220,77 @@ async def test_what_happens_after_the_trigger_is_logged(hass: HomeAssistant, cap
     assert "Media player 'media_player.music' (esphome): state playing" in caplog.text
     assert "Found 1 ESPHome and Music Assistant media players" in caplog.text
     assert "Planning area" in caplog.text
-    assert "Calling media_player.volume_set for 'media_player.music' with 0.30" in caplog.text
+    assert "Calling media_player.volume_set for 'media_player.music' {'entity_id': 'media_player.music', 'volume_level': 0.3}" in caplog.text
     assert "1 volume changes planned" in caplog.text
+
+
+async def test_pause_mode_pauses_and_resumes(hass: HomeAssistant) -> None:
+    kitchen = ar.async_get(hass).async_create("Kitchen").id
+    add_entity(hass, "assist_satellite.kitchen", "esphome", kitchen)
+    add_entity(hass, "media_player.music", "esphome", kitchen)
+    set_player(hass, "media_player.music", 0.6)
+    volume_calls = async_mock_service(hass, "media_player", "volume_set")
+    pause_calls = async_mock_service(hass, "media_player", "media_pause")
+    play_calls = async_mock_service(hass, "media_player", "media_play")
+    await setup_controller(hass, mode="pause")
+
+    hass.states.async_set("assist_satellite.kitchen", "listening")
+    await hass.async_block_till_done()
+    assert [call.data["entity_id"] for call in pause_calls] == ["media_player.music"]
+    assert volume_calls == []
+
+    set_player(hass, "media_player.music", 0.6, state="paused")
+    hass.states.async_set("assist_satellite.kitchen", "idle")
+    await hass.async_block_till_done()
+    assert [call.data["entity_id"] for call in play_calls] == ["media_player.music"]
+
+
+async def test_pause_mode_does_not_resume_music_the_user_started_again(hass: HomeAssistant) -> None:
+    kitchen = ar.async_get(hass).async_create("Kitchen").id
+    add_entity(hass, "assist_satellite.kitchen", "esphome", kitchen)
+    add_entity(hass, "media_player.music", "esphome", kitchen)
+    set_player(hass, "media_player.music", 0.6)
+    async_mock_service(hass, "media_player", "media_pause")
+    play_calls = async_mock_service(hass, "media_player", "media_play")
+    await setup_controller(hass, mode="pause")
+
+    hass.states.async_set("assist_satellite.kitchen", "listening")
+    await hass.async_block_till_done()
+    set_player(hass, "media_player.music", 0.6, state="playing")
+    hass.states.async_set("assist_satellite.kitchen", "idle")
+    await hass.async_block_till_done()
+    assert play_calls == []
+
+
+async def test_actions_show_on_the_players_activity(hass: HomeAssistant) -> None:
+    kitchen = ar.async_get(hass).async_create("Kitchen").id
+    add_entity(hass, "assist_satellite.kitchen", "esphome", kitchen)
+    add_entity(hass, "media_player.music", "esphome", kitchen)
+    set_player(hass, "media_player.music", 0.6)
+    async_mock_service(hass, "media_player", "volume_set")
+    entries = async_capture_events(hass, "logbook_entry")
+    await setup_controller(hass)
+
+    hass.states.async_set("assist_satellite.kitchen", "listening")
+    await hass.async_block_till_done()
+    set_player(hass, "media_player.music", 0.3)
+    hass.states.async_set("assist_satellite.kitchen", "idle")
+    await hass.async_block_till_done()
+
+    assert [(event.data["name"], event.data["message"], event.data["entity_id"], event.data["domain"]) for event in entries] == [
+        ("Satellite Controller", "lowered the volume from 60 % to 30 % because a satellite in the room is busy", "media_player.music", DOMAIN),
+        ("Satellite Controller", "restored the volume from 30 % to 60 %", "media_player.music", DOMAIN),
+    ]
+
+
+async def test_failed_service_call_leaves_no_activity_entry(hass: HomeAssistant) -> None:
+    kitchen = ar.async_get(hass).async_create("Kitchen").id
+    add_entity(hass, "assist_satellite.kitchen", "esphome", kitchen)
+    add_entity(hass, "media_player.music", "esphome", kitchen)
+    set_player(hass, "media_player.music", 0.6)
+    entries = async_capture_events(hass, "logbook_entry")
+    await setup_controller(hass)
+
+    hass.states.async_set("assist_satellite.kitchen", "listening")
+    await hass.async_block_till_done()
+    assert entries == []

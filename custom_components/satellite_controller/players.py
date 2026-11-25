@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .const import PLAYER_PLATFORMS
-from .ducking import PlayerSnapshot
+from .ducking import CurrentPlayer, PlayerSnapshot
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,16 +40,18 @@ def collect_players(hass: HomeAssistant) -> list[PlayerSnapshot]:
             playing=state.state == "playing",
             volume=float(volume) if volume is not None else None,
             can_set_volume=bool(features & MediaPlayerEntityFeature.VOLUME_SET),
+            can_pause=bool(features & MediaPlayerEntityFeature.PAUSE),
             group_members=tuple(state.attributes.get("group_members") or ()),
         )
         _LOGGER.debug(
-            "Media player '%s' (%s): state %s, area %s, volume %s, volume control %s, group members %s",
+            "Media player '%s' (%s): state %s, area %s, volume %s, volume control %s, pause %s, group members %s",
             snapshot.entity_id,
             entry.platform,
             state.state,
             snapshot.area_id,
             snapshot.volume,
             snapshot.can_set_volume,
+            snapshot.can_pause,
             list(snapshot.group_members),
         )
         players.append(snapshot)
@@ -57,11 +59,11 @@ def collect_players(hass: HomeAssistant) -> list[PlayerSnapshot]:
     return players
 
 
-def current_volumes(hass: HomeAssistant, entity_ids: list[str]) -> dict[str, float | None]:
-    """The current volume of each player, ``None`` if it is unavailable or has none."""
-    volumes: dict[str, float | None] = {}
+def current_players(hass: HomeAssistant, entity_ids: list[str]) -> dict[str, CurrentPlayer]:
+    """The current state and volume of each player, ``None`` where it is unavailable or has none."""
+    players: dict[str, CurrentPlayer] = {}
     for entity_id in entity_ids:
         state = hass.states.get(entity_id)
         volume = state.attributes.get("volume_level") if state is not None else None
-        volumes[entity_id] = float(volume) if volume is not None else None
-    return volumes
+        players[entity_id] = CurrentPlayer(state.state if state is not None else None, float(volume) if volume is not None else None)
+    return players

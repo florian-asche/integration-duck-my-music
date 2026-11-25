@@ -15,17 +15,23 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
 )
 
 from .const import (
     CONF_DUCK_PERCENT,
     CONF_EXCLUDED_ENTITIES,
+    CONF_MODE,
     CONF_RESTORE_DELAY,
     CONF_SKIP_MULTI_ROOM_GROUPS,
     DEFAULT_DUCK_PERCENT,
+    DEFAULT_MODE,
     DEFAULT_RESTORE_DELAY,
     DEFAULT_SKIP_MULTI_ROOM_GROUPS,
     DOMAIN,
+    MODE_DUCK,
+    MODE_PAUSE,
 )
 
 
@@ -48,7 +54,7 @@ class SatelliteControllerConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SatelliteControllerOptionsFlow(OptionsFlow):
-    """How much the music is lowered, and for which players."""
+    """Whether the music is lowered or paused, how much, and for which players."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Ask for the options."""
@@ -58,6 +64,9 @@ class SatelliteControllerOptionsFlow(OptionsFlow):
         options = self.config_entry.options
         schema = vol.Schema(
             {
+                vol.Required(CONF_MODE, default=options.get(CONF_MODE, DEFAULT_MODE)): SelectSelector(
+                    SelectSelectorConfig(options=[MODE_DUCK, MODE_PAUSE], translation_key=CONF_MODE)
+                ),
                 vol.Required(CONF_DUCK_PERCENT, default=options.get(CONF_DUCK_PERCENT, DEFAULT_DUCK_PERCENT)): NumberSelector(
                     NumberSelectorConfig(min=10, max=90, step=5, unit_of_measurement="%", mode=NumberSelectorMode.SLIDER)
                 ),

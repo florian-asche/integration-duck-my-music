@@ -29,11 +29,16 @@ Needs Home Assistant 2025.10 or newer.
 - The satellites and the players must be in an **area** (on the entity or on its device). Satellites without an area are ignored.
 - Satellites are ESPHome `assist_satellite` entities. Players are ESPHome and Music Assistant (Sendspin) `media_player` entities that support setting the volume.
 
+## Activity
+
+Everything the integration does to a player shows in that player's **Activity** (logbook), for example *Satellite Controller lowered the volume from 60 % to 30 % because a satellite in the room is busy*, *… restored the volume from 30 % to 60 %*, *… paused the music …* and *… resumed the music*. Detailed decisions are in the debug log of `custom_components.satellite_controller`.
+
 ## Options
 
 | Option | Default | Meaning |
 |---|---|---|
-| Lower the volume by | 50 % | Each playing player loses this share of its **own** volume. |
+| What to do with the music | Lower the volume | *Lower the volume*, or *Pause and resume*: the players that play are paused while the satellite is busy and resumed afterwards. A player is only resumed if it is still paused. |
+| Lower the volume by | 50 % | Only when lowering: each playing player loses this share of its **own** volume. |
 | Restore delay | 0 s | Wait this long after the satellite is idle before restoring. |
 | Players that are never lowered | none | For example the player of the satellite that speaks, if it shows up a second time. |
 | Skip groups that span several rooms | off | A group is lowered as a whole, also in other rooms. Turn on to leave such groups alone. |
