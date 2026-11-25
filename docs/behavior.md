@@ -1,6 +1,6 @@
 # Behavior Guide
 
-This page describes what Satellite Controller does, from the user's point of view: when the music in a room is lowered or paused, which players are affected, and when everything goes back to normal.
+This page describes what Duck My Music does, from the user's point of view: when the music in a room is lowered or paused, which players are affected, and when everything goes back to normal.
 
 For the design background and the open points see [plan.md](plan.md).
 
@@ -198,9 +198,9 @@ The integration does not lock the volume and does not fight changes.
 
 ## Activity and log
 
-- Every successful volume change, pause and resume is added to the **Activity** (logbook) of that player and its device. The text names the integration, for example *Media Player volume lowered by Satellite Controller from 60 % to 30 % because a satellite in the room is busy*. Home Assistant shows the player's name as the subject, so the integration's name is part of the text.
+- Every successful volume change, pause and resume is added to the **Activity** (logbook) of that player and its device. The text names the integration, for example *Media Player volume lowered by Duck My Music from 60 % to 30 % because a satellite in the room is busy*. Home Assistant shows the player's name as the subject, so the integration's name is part of the text.
 - If a service call fails, a warning is written to the log and there is no activity entry.
-- The debug log of `custom_components.satellite_controller` shows every decision: which players were found or ignored and why, the planned changes, every service call, and the restore.
+- The debug log of `custom_components.duck_my_music` shows every decision: which players were found or ignored and why, the planned changes, every service call, and the restore.
 
 ---
 

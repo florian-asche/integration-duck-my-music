@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from .ducking import ActionKind, PlayerAction
 
-LOGBOOK_NAME = "Satellite Controller"
+LOGBOOK_NAME = "Duck My Music"
 
 
 def describe_action(action: PlayerAction) -> str:

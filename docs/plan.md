@@ -1,4 +1,4 @@
-# Satellite Controller: plan
+# Duck My Music: plan
 
 Status: milestones 1-5 are implemented (see section 10). Hardware measurement (milestone 0) and hardware tests (milestone 6) are not done. Items marked *unverified* have not been confirmed against source code or hardware.
 

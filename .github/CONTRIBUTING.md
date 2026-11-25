@@ -1,6 +1,6 @@
-# Contributing to Satellite Controller
+# Contributing to Duck My Music
 
-Everybody is invited and welcome to contribute to Satellite Controller. Even if you are not a developer, perhaps you would like to help with the documentation? If you are a developer and have a feature that isn't supported yet, why not spend some time and help to integrate it?
+Everybody is invited and welcome to contribute to Duck My Music. Even if you are not a developer, perhaps you would like to help with the documentation? If you are a developer and have a feature that isn't supported yet, why not spend some time and help to integrate it?
 
 The process is straight-forward.
 
@@ -18,7 +18,7 @@ If you want to suggest a new feature, please open a discussion on GitHub and des
 
 ## Issue Tracker
 
-If you want to report an issue, please create an issue on the repository. For questions and how-to, use the discussions. Please add the debug log of `custom_components.satellite_controller` (see the README).
+If you want to report an issue, please create an issue on the repository. For questions and how-to, use the discussions. Please add the debug log of `custom_components.duck_my_music` (see the README).
 
 ## AI Policy
 

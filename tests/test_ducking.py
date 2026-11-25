@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from custom_components.satellite_controller.ducking import (
+from custom_components.duck_my_music.ducking import (
     ActionKind,
     CurrentPlayer,
     DuckedPlayer,
@@ -86,7 +86,7 @@ def test_release_does_not_restore_a_volume_changed_meanwhile(caplog: pytest.LogC
     assert [(record.levelno, record.getMessage()) for record in caplog.records if record.levelno >= logging.INFO] == [
         (
             logging.INFO,
-            "Not restoring the volume of 'media_player.a': Satellite Controller lowered it to 0.3, but it is now 0.8, so it was changed by someone else",
+            "Not restoring the volume of 'media_player.a': Duck My Music lowered it to 0.3, but it is now 0.8, so it was changed by someone else",
         )
     ]
 
@@ -156,7 +156,7 @@ def test_release_does_not_resume_a_player_that_is_not_paused_any_more(caplog: py
         plan = plan_release("kitchen", ducked, {"media_player.a": current(0.6, state)})
     assert plan.actions == ()
     assert [record.levelno for record in caplog.records if record.levelno >= logging.INFO] == [logging.INFO]
-    assert f"Not resuming 'media_player.a': it was paused by Satellite Controller, but its state is now {state}" in caplog.text
+    assert f"Not resuming 'media_player.a': it was paused by Duck My Music, but its state is now {state}" in caplog.text
 
 
 def test_paused_players_survive_storage_and_old_data_is_not_paused() -> None:

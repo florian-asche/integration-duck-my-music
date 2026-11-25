@@ -1,6 +1,6 @@
 {
-  "domain": "satellite_controller",
-  "name": "Satellite Controller",
+  "domain": "duck_my_music",
+  "name": "Duck My Music",
   "after_dependencies": [
     "assist_satellite",
     "media_player"
@@ -9,10 +9,10 @@
     "@florian-asche"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/florian-asche/satellite-controller-integration",
+  "documentation": "https://github.com/florian-asche/integration-duck-my-music",
   "integration_type": "service",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/florian-asche/satellite-controller-integration/issues",
+  "issue_tracker": "https://github.com/florian-asche/integration-duck-my-music/issues",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.1.0"

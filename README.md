@@ -1,4 +1,4 @@
-# Satellite Controller
+# Duck My Music
 
 A Home Assistant custom integration that lowers ("ducks") the music in a room while a voice satellite in that room is listening or speaking, and restores it afterwards.
 
@@ -8,7 +8,7 @@ A Home Assistant custom integration that lowers ("ducks") the music in a room wh
 
 The music of a player is lowered while the satellite in its room is busy and restored afterwards. Both steps show on the player's activity:
 
-![Activity of a player: the volume was lowered from 10 % to 5 % and restored by Satellite Controller](docs/example_protocol.jpg)
+![Activity of a player: the volume was lowered from 10 % to 5 % and restored by Duck My Music](docs/example_protocol.jpg)
 
 ## What it is meant to do
 
@@ -25,10 +25,10 @@ Neither the ESPHome native API nor Sendspin has a duck/unduck command, so the in
 
 Needs Home Assistant 2025.10 or newer.
 
-1. [![Open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=florian-asche&repository=satellite-controller-integration&category=integration)
-   In Home Assistant's [Marketplace](https://www.home-assistant.io/integrations/marketplace/) (**Settings** > **Marketplace** > **Add from link**), add `https://github.com/florian-asche/satellite-controller-integration` and install **Satellite Controller**.
-2. [![Set up the integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=satellite_controller)
-   Add **Satellite Controller** under **Settings** > **Devices & services**. There is nothing to configure; the options are on the entry afterwards.
+1. [![Open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=florian-asche&repository=integration-duck-my-music&category=integration)
+   In Home Assistant's [Marketplace](https://www.home-assistant.io/integrations/marketplace/) (**Settings** > **Marketplace** > **Add from link**), add `https://github.com/florian-asche/integration-duck-my-music` and install **Duck My Music**.
+2. [![Set up the integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=duck_my_music)
+   Add **Duck My Music** under **Settings** > **Devices & services**. There is nothing to configure; the options are on the entry afterwards.
 
 ## Requirements
 
@@ -37,12 +37,12 @@ Needs Home Assistant 2025.10 or newer.
 
 ## Activity
 
-Everything the integration does to a player shows in that player's **Activity** (logbook), for example *Media Player volume lowered by Satellite Controller from 60 % to 30 % because a satellite in the room is busy*, *… volume restored by Satellite Controller from 30 % to 60 %*, *… paused by Satellite Controller …* and *… resumed by Satellite Controller*. Home Assistant shows the name of the player as the subject of such an entry, so the text itself names the integration. If someone changes the volume (or resumes or stops the music) while it is lowered or paused, the integration does not touch the player afterwards and writes an info message to the log. Detailed decisions are in the debug log of `custom_components.satellite_controller`. To see them, add this to `configuration.yaml` and restart:
+Everything the integration does to a player shows in that player's **Activity** (logbook), for example *Media Player volume lowered by Duck My Music from 60 % to 30 % because a satellite in the room is busy*, *… volume restored by Duck My Music from 30 % to 60 %*, *… paused by Duck My Music …* and *… resumed by Duck My Music*. Home Assistant shows the name of the player as the subject of such an entry, so the text itself names the integration. If someone changes the volume (or resumes or stops the music) while it is lowered or paused, the integration does not touch the player afterwards and writes an info message to the log. Detailed decisions are in the debug log of `custom_components.duck_my_music`. To see them, add this to `configuration.yaml` and restart:
 
 ```yaml
 logger:
   logs:
-    custom_components.satellite_controller: debug
+    custom_components.duck_my_music: debug
 ```
 
 ## Options

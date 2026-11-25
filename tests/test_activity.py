@@ -1,6 +1,6 @@
 """Tests for the busy-satellite tracking."""
 
-from custom_components.satellite_controller.activity import update_activity
+from custom_components.duck_my_music.activity import update_activity
 
 
 def test_satellite_becoming_busy_starts_its_area() -> None:

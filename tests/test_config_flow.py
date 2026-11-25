@@ -1,10 +1,10 @@
-"""Tests for the Satellite Controller config flow and setup."""
+"""Tests for the Duck My Music config flow and setup."""
 
 from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.satellite_controller.const import DOMAIN
+from custom_components.duck_my_music.const import DOMAIN
 
 
 async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
@@ -14,7 +14,7 @@ async def test_user_flow_creates_entry(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input={})
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Satellite Controller"
+    assert result["title"] == "Duck My Music"
 
 
 async def test_second_entry_is_aborted(hass: HomeAssistant) -> None:

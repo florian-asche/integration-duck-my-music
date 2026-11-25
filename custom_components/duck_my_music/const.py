@@ -1,6 +1,6 @@
-"""Constants for the Satellite Controller integration."""
+"""Constants for the Duck My Music integration."""
 
-DOMAIN = "satellite_controller"
+DOMAIN = "duck_my_music"
 
 STORAGE_KEY = f"{DOMAIN}.ducked"
 STORAGE_VERSION = 1

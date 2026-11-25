@@ -1,4 +1,4 @@
-"""Satellite Controller: lowers the music in a room while a voice satellite there is busy.
+"""Duck My Music: lowers the music in a room while a voice satellite there is busy.
 
 When an ESPHome Assist satellite leaves ``idle``, the ESPHome and Music
 Assistant players that are playing in the same area are lowered by half of their
@@ -10,25 +10,25 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .controller import SatelliteController
+from .controller import DuckMyMusicController
 
-type SatelliteControllerConfigEntry = ConfigEntry[SatelliteController]
+type DuckMyMusicConfigEntry = ConfigEntry[DuckMyMusicController]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SatelliteControllerConfigEntry) -> bool:
-    """Set up Satellite Controller from a config entry."""
-    controller = SatelliteController(hass, entry)
+async def async_setup_entry(hass: HomeAssistant, entry: DuckMyMusicConfigEntry) -> bool:
+    """Set up Duck My Music from a config entry."""
+    controller = DuckMyMusicController(hass, entry)
     await controller.async_start()
     entry.runtime_data = controller
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: SatelliteControllerConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: DuckMyMusicConfigEntry) -> bool:
     """Unload a config entry and restore the lowered players."""
     await entry.runtime_data.async_stop()
     return True
 
 
-async def _async_reload(hass: HomeAssistant, entry: SatelliteControllerConfigEntry) -> None:
+async def _async_reload(hass: HomeAssistant, entry: DuckMyMusicConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)

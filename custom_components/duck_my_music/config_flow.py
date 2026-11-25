@@ -1,4 +1,4 @@
-"""Config flow for Satellite Controller: one entry, and options for how the music is lowered."""
+"""Config flow for Duck My Music: one entry, and options for how the music is lowered."""
 
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ from .const import (
 )
 
 
-class SatelliteControllerConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Set up Satellite Controller."""
+class DuckMyMusicConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Set up Duck My Music."""
 
     VERSION = 1
 
@@ -40,16 +40,16 @@ class SatelliteControllerConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         """The options of an entry."""
-        return SatelliteControllerOptionsFlow()
+        return DuckMyMusicOptionsFlow()
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Create the entry after the user confirmed it."""
         if user_input is not None:
-            return self.async_create_entry(title="Satellite Controller", data={})
+            return self.async_create_entry(title="Duck My Music", data={})
         return self.async_show_form(step_id="user")
 
 
-class SatelliteControllerOptionsFlow(OptionsFlow):
+class DuckMyMusicOptionsFlow(OptionsFlow):
     """Whether the music is lowered or paused, how much, and for which players."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

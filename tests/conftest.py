@@ -12,8 +12,8 @@ COMPONENTS = Path(__file__).resolve().parent.parent / "custom_components"
 
 
 @pytest.fixture(autouse=True)
-def satellite_controller_integration(enable_custom_integrations: None) -> None:
-    """Make custom_components.satellite_controller loadable: the test package's
+def duck_my_music_integration(enable_custom_integrations: None) -> None:
+    """Make custom_components.duck_my_music loadable: the test package's
     custom_components, which Home Assistant imports, gets this one's too."""
     import custom_components  # pylint: disable=import-outside-toplevel
 

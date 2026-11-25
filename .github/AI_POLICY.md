@@ -1,6 +1,6 @@
-# Satellite Controller - AI Policy
+# Duck My Music - AI Policy
 
-We support using AI (i.e., LLMs) as tools when contributing to Satellite Controller. However, you are responsible for any contributions you submit, and we are responsible for any contributions we merge and release. We hold a high bar for all contributions to our projects.
+We support using AI (i.e., LLMs) as tools when contributing to Duck My Music. However, you are responsible for any contributions you submit, and we are responsible for any contributions we merge and release. We hold a high bar for all contributions to our projects.
 
 Our maintainers dedicate their time and expertise to reviewing contributions. Submitting AI-generated content that you have not personally reviewed and understood wastes that time and will not be accepted.
 
@@ -36,4 +36,4 @@ If an AI tool leaves a comment on your contribution, treat it as you would any o
 
 ## Enforcement
 
-Contributions that do not follow this policy will be closed. Repeated violations may result in being blocked from contributing to Satellite Controller projects.
+Contributions that do not follow this policy will be closed. Repeated violations may result in being blocked from contributing to Duck My Music projects.

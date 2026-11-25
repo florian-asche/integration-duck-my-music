@@ -6,7 +6,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events, async_fire_time_changed, async_mock_service
 
-from custom_components.satellite_controller.const import DOMAIN
+from custom_components.duck_my_music.const import DOMAIN
 
 VOLUME_SET = 4
 PAUSE = 1
@@ -192,9 +192,9 @@ async def test_unloading_restores_lowered_players(hass: HomeAssistant) -> None:
 
 
 async def test_lowered_players_are_restored_after_a_restart(hass: HomeAssistant, hass_storage) -> None:
-    hass_storage["satellite_controller.ducked"] = {
+    hass_storage["duck_my_music.ducked"] = {
         "version": 1,
-        "key": "satellite_controller.ducked",
+        "key": "duck_my_music.ducked",
         "data": {"ducked": [{"entity_id": "media_player.music", "original_volume": 0.6, "ducked_volume": 0.3, "areas": ["kitchen"]}]},
     }
     set_player(hass, "media_player.music", 0.3)
@@ -213,7 +213,7 @@ async def test_what_happens_after_the_trigger_is_logged(hass: HomeAssistant, cap
     async_mock_service(hass, "media_player", "volume_set")
     await setup_controller(hass)
 
-    with caplog.at_level("DEBUG", logger="custom_components.satellite_controller"):
+    with caplog.at_level("DEBUG", logger="custom_components.duck_my_music"):
         hass.states.async_set("assist_satellite.kitchen", "listening")
         await hass.async_block_till_done()
 
@@ -279,8 +279,8 @@ async def test_actions_show_on_the_players_activity(hass: HomeAssistant) -> None
     await hass.async_block_till_done()
 
     assert [(event.data["name"], event.data["message"], event.data["entity_id"], event.data["domain"]) for event in entries] == [
-        ("Satellite Controller", "volume lowered by Satellite Controller from 60 % to 30 % because a satellite in the room is busy", "media_player.music", DOMAIN),
-        ("Satellite Controller", "volume restored by Satellite Controller from 30 % to 60 %", "media_player.music", DOMAIN),
+        ("Duck My Music", "volume lowered by Duck My Music from 60 % to 30 % because a satellite in the room is busy", "media_player.music", DOMAIN),
+        ("Duck My Music", "volume restored by Duck My Music from 30 % to 60 %", "media_player.music", DOMAIN),
     ]
 
 

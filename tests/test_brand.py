@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-BRAND = Path(__file__).resolve().parent.parent / "custom_components" / "satellite_controller" / "brand"
+BRAND = Path(__file__).resolve().parent.parent / "custom_components" / "duck_my_music" / "brand"
 
 
 def png_size(path: Path) -> tuple[int, int]:

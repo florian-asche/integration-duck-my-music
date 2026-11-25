@@ -43,7 +43,7 @@ from .players import collect_players, current_players
 _LOGGER = logging.getLogger(__name__)
 
 
-class SatelliteController:
+class DuckMyMusicController:
     """Lowers and restores the players of the areas whose satellites are busy."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
