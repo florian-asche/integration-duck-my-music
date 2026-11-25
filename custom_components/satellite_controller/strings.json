@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Satellite Controller",
+        "description": "Lowers the music in a room while a voice satellite in that room is listening or speaking."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Satellite Controller is already set up."
+    }
+  }
+}

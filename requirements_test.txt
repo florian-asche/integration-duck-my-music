@@ -1,0 +1,11 @@
+pytest-homeassistant-custom-component==0.13.375
+# What Home Assistant's conversation and tts components need (assist_satellite
+# depends on them): as their manifests in that Home Assistant pin them.
+hassil==3.12.1
+home-assistant-intents==2026.10.6
+gazetteer-matcher==1.1.0
+mutagen==1.48.1
+ha-ffmpeg==3.2.2
+# assist_pipeline's requirements (assist_satellite depends on it).
+pymicro-vad==1.0.1
+pyspeex-noise==1.0.2
