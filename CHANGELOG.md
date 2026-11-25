@@ -1,3 +1,15 @@
+<a id="v0.0.3"></a>
+# [v0.0.3](https://github.com/florian-asche/integration-duck-my-music/releases/tag/v0.0.3) - 2026-11-25
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+
+
+**Full Changelog**: https://github.com/florian-asche/integration-duck-my-music/compare/v0.0.2...v0.0.3
+
+[Changes][v0.0.3]
+
+
 <a id="v0.0.2"></a>
 # [v0.0.2](https://github.com/florian-asche/integration-duck-my-music/releases/tag/v0.0.2) - 2026-11-25
 
@@ -24,6 +36,7 @@
 [Changes][v0.0.1]
 
 
+[v0.0.3]: https://github.com/florian-asche/integration-duck-my-music/compare/v0.0.2...v0.0.3
 [v0.0.2]: https://github.com/florian-asche/integration-duck-my-music/compare/v0.0.1...v0.0.2
 [v0.0.1]: https://github.com/florian-asche/integration-duck-my-music/tree/v0.0.1
 
