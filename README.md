@@ -6,9 +6,13 @@ A Home Assistant custom integration that lowers ("ducks") the music in a room wh
 
 ## Example
 
+The options of the integration:
+
+<img src="docs/example1.jpg" alt="The options dialog of Duck My Music: what to do with the music, how much to lower it, restore delay and excluded players" width="360">
+
 The music of a player is lowered while the satellite in its room is busy and restored afterwards. Both steps show on the player's activity:
 
-![Activity of a player: the volume was lowered from 10 % to 5 % and restored by Duck My Music](docs/example_protocol.jpg)
+![Activity of a player: the volume was lowered from 10 % to 5 % and restored](docs/example2.jpg)
 
 ## What it is meant to do
 
