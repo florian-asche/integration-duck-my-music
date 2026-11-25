@@ -1,4 +1,4 @@
-# Duck My Music
+<h1><img src="custom_components/duck_my_music/brand/icon.png" alt="Duck My Music icon" width="48" height="48" align="center"> Duck My Music</h1>
 
 A Home Assistant custom integration that lowers ("ducks") the music in a room while a voice satellite in that room is listening or speaking, and restores it afterwards.
 
