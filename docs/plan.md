@@ -55,7 +55,7 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 
 ## 4. Architecture
 
-- `integration_type: service`, `iot_class: local_push`, `single_config_entry: true`, `config_flow: true`, dependencies `assist_satellite` and `media_player`. No external requirements, no YAML.
+- `integration_type: service`, `iot_class: local_push`, `single_config_entry: true`, `config_flow: true`, `after_dependencies` `assist_satellite` and `media_player` (only load order, no hard dependency: the integration reads entity states and calls `media_player.volume_set`, it imports nothing from those components and compares the satellite states as strings). No external requirements, no YAML. Tests therefore need nothing beyond `pytest-homeassistant-custom-component`.
 - State changes of all ESPHome `assist_satellite` entities are tracked with `async_track_state_change_event`. New satellites are found through registry events. Each satellite's area comes from `async_get_effective_area_id`. Satellites without an area are ignored (reported in diagnostics).
 - Per area the active satellites are counted (set of entity ids, not a flag): duck on the first, restore on the last.
 - Pure logic (`areas.py`, `ducking.py`) takes data and returns a list of actions, with no Home Assistant access. Side effects live in `controller.py` only.
