@@ -31,7 +31,7 @@ Needs Home Assistant 2025.10 or newer.
 
 ## Activity
 
-Everything the integration does to a player shows in that player's **Activity** (logbook), for example *Satellite Controller lowered the volume from 60 % to 30 % because a satellite in the room is busy*, *… restored the volume from 30 % to 60 %*, *… paused the music …* and *… resumed the music*. If someone changes the volume (or resumes or stops the music) while it is lowered or paused, the integration does not touch the player afterwards and writes an info message to the log. Detailed decisions are in the debug log of `custom_components.satellite_controller`.
+Everything the integration does to a player shows in that player's **Activity** (logbook), for example *Media Player volume lowered by Satellite Controller from 60 % to 30 % because a satellite in the room is busy*, *… volume restored by Satellite Controller from 30 % to 60 %*, *… paused by Satellite Controller …* and *… resumed by Satellite Controller*. Home Assistant shows the name of the player as the subject of such an entry, so the text itself names the integration. If someone changes the volume (or resumes or stops the music) while it is lowered or paused, the integration does not touch the player afterwards and writes an info message to the log. Detailed decisions are in the debug log of `custom_components.satellite_controller`.
 
 ## Options
 

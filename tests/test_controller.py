@@ -278,8 +278,8 @@ async def test_actions_show_on_the_players_activity(hass: HomeAssistant) -> None
     await hass.async_block_till_done()
 
     assert [(event.data["name"], event.data["message"], event.data["entity_id"], event.data["domain"]) for event in entries] == [
-        ("Satellite Controller", "lowered the volume from 60 % to 30 % because a satellite in the room is busy", "media_player.music", DOMAIN),
-        ("Satellite Controller", "restored the volume from 30 % to 60 %", "media_player.music", DOMAIN),
+        ("Satellite Controller", "volume lowered by Satellite Controller from 60 % to 30 % because a satellite in the room is busy", "media_player.music", DOMAIN),
+        ("Satellite Controller", "volume restored by Satellite Controller from 30 % to 60 %", "media_player.music", DOMAIN),
     ]
 
 
