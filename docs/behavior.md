@@ -9,6 +9,7 @@ For the design background and the open points see [plan.md](plan.md).
 ## Contents
 
 - [The idea in one paragraph](#the-idea-in-one-paragraph)
+- [Flow at a glance](#flow-at-a-glance)
 - [What starts it](#what-starts-it)
 - [Which players are affected](#which-players-are-affected)
 - [What happens to the music](#what-happens-to-the-music)
@@ -27,6 +28,41 @@ For the design background and the open points see [plan.md](plan.md).
 ## The idea in one paragraph
 
 When a voice satellite in a room is listening or speaking, the other players in that room that are playing music get quieter (or are paused). When the satellite is idle again, they go back. The satellite itself lowers its own music, this integration does not touch it.
+
+---
+
+## Flow at a glance
+
+When a satellite becomes busy:
+
+```mermaid
+flowchart TD
+    A["A satellite leaves idle<br/>(listening, processing or responding)"] --> B{"First busy satellite<br/>in this area?"}
+    B -- no --> Z["Nothing more to do"]
+    B -- yes --> C["Read volume and state of all players<br/>at the same moment (snapshot)"]
+    C --> D["Take the players that are playing in the same area<br/>(not the satellite's own, not excluded)"]
+    D --> E{"Is a sync group player<br/>playing there?"}
+    E -- yes --> F["Handle only the group player,<br/>not its members"]
+    E -- no --> G["Handle each player on its own"]
+    F --> H{"Mode?"}
+    G --> H
+    H -- "Lower the volume" --> I["Set each one to 50 % of<br/>its own snapshot volume"]
+    H -- "Pause and resume" --> J["Pause each one"]
+```
+
+When the satellite is quiet again:
+
+```mermaid
+flowchart TD
+    A["The satellite is idle again"] --> B{"Another satellite in this area<br/>still busy?"}
+    B -- yes --> C["Keep the music lowered"]
+    B -- no --> D["Wait for the restore delay"]
+    D --> E{"Busy again<br/>in the meantime?"}
+    E -- yes --> C
+    E -- no --> F{"Is the player still as the<br/>integration left it?"}
+    F -- yes --> G["Set the old volume back<br/>or resume the music"]
+    F -- no --> H["Leave it alone and<br/>write an info message"]
+```
 
 ---
 
