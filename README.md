@@ -17,7 +17,12 @@ Neither the ESPHome native API nor Sendspin has a duck/unduck command, so the in
 
 ## Installation
 
-Add this repository to HACS as a custom repository (category *Integration*), install it and add **Satellite Controller** under *Settings, Devices & services*. Home Assistant 2025.10 or newer.
+Needs Home Assistant 2025.10 or newer.
+
+1. [![Open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=florian-asche&repository=satellite-controller-integration&category=integration)
+   In Home Assistant's [Marketplace](https://www.home-assistant.io/integrations/marketplace/) (**Settings** > **Marketplace** > **Add from link**), add `https://github.com/florian-asche/satellite-controller-integration` and install **Satellite Controller**.
+2. [![Set up the integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=satellite_controller)
+   Add **Satellite Controller** under **Settings** > **Devices & services**. There is nothing to configure; the options are on the entry afterwards.
 
 ## Requirements
 
