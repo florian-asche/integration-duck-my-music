@@ -14,11 +14,11 @@ The process is straight-forward.
 
 ## Feature suggestions
 
-If you want to suggest a new feature, please open an issue and describe what you would like to happen in which situation.
+If you want to suggest a new feature, please open a discussion on GitHub and describe what you would like to happen in which situation.
 
 ## Issue Tracker
 
-If you want to report an issue, please create an issue on the repository. Please add the debug log of `custom_components.satellite_controller` (see the README).
+If you want to report an issue, please create an issue on the repository. For questions and how-to, use the discussions. Please add the debug log of `custom_components.satellite_controller` (see the README).
 
 ## AI Policy
 

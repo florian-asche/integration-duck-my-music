@@ -3,6 +3,9 @@ contact_links:
   - name: "🐛 Report a bug"
     url: https://github.com/florian-asche/satellite-controller-integration/issues/new?template=bug_report.md
     about: Report a bug in Satellite Controller.
+  - name: "❓ Questions & how-to (Q&A)"
+    url: https://github.com/florian-asche/satellite-controller-integration/discussions
+    about: Ask how-to questions and search previous answers.
   - name: "💡 Feature requests & ideas"
-    url: https://github.com/florian-asche/satellite-controller-integration/issues/new?template=feature_request.md
-    about: Suggest a new feature or an improvement.
+    url: https://github.com/florian-asche/satellite-controller-integration/discussions
+    about: Suggest and vote on new features and enhancements.
