@@ -162,12 +162,17 @@ def plan_release(area_id: str | None, ducked: Mapping[str, DuckedPlayer], curren
                 _LOGGER.debug("Resuming '%s'", entity_id)
                 actions.append(PlayerAction(entity_id, ActionKind.RESUME))
             else:
-                _LOGGER.debug("Not resuming '%s': state is %s, expected paused", entity_id, now.state)
+                _LOGGER.info("Not resuming '%s': it was paused by Satellite Controller, but its state is now %s, so it was changed by someone else", entity_id, now.state)
         elif player.ducked_volume is not None and player.original_volume is not None and now.volume is not None and abs(now.volume - player.ducked_volume) <= VOLUME_TOLERANCE:
             _LOGGER.debug("Restoring '%s' from %.2f to %.2f", entity_id, now.volume, player.original_volume)
             actions.append(PlayerAction(entity_id, ActionKind.VOLUME, player.original_volume, now.volume))
         else:
-            _LOGGER.debug("Not restoring '%s': volume is %s, expected %s", entity_id, now.volume, player.ducked_volume)
+            _LOGGER.info(
+                "Not restoring the volume of '%s': Satellite Controller lowered it to %s, but it is now %s, so it was changed by someone else",
+                entity_id,
+                player.ducked_volume,
+                now.volume,
+            )
     return DuckPlan(actions=tuple(actions), ducked=remaining)
 
 

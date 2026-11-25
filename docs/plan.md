@@ -135,7 +135,7 @@ Verified in the sources:
 
 Options for this integration:
 
-1. **Do not lock (current).** If someone changes the volume while it is lowered, the player is not restored afterwards (section 3, rule 8). Nothing fights the user.
+1. **Do not lock (current).** If someone changes the volume while it is lowered, the player is not restored afterwards (section 3, rule 8) and an info message says so in the log. Nothing fights the user.
 2. **Revert changes while lowered (possible, not built).** Watch the volume of lowered players and set it back to the ducked value when it differs. Drawbacks: the volume flickers, a Sendspin group moves together and could start a loop with other members' reports, and it overrides a deliberate change by the user. Physical knobs and other apps cannot be stopped from changing it first.
 3. **Treat a change as the new level (possible, not built).** If the volume is changed while lowered, restore to the new level divided by the ducked fraction instead of dropping the entry. Avoids fighting the user, but the result is a guess.
 

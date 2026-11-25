@@ -135,11 +135,16 @@ def test_release_restores_the_original_volume() -> None:
 
 def test_release_does_not_restore_a_volume_changed_meanwhile(caplog: pytest.LogCaptureFixture) -> None:
     ducked = duck([player("media_player.a", 0.6)]).ducked
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.INFO):
         plan = plan_release("kitchen", ducked, {"media_player.a": current(0.8)})
     assert plan.actions == ()
     assert plan.ducked == {}
-    assert "Not restoring 'media_player.a'" in caplog.text
+    assert [(record.levelno, record.getMessage()) for record in caplog.records] == [
+        (
+            logging.INFO,
+            "Not restoring the volume of 'media_player.a': Satellite Controller lowered it to 0.3, but it is now 0.8, so it was changed by someone else",
+        )
+    ]
 
 
 def test_release_skips_players_that_are_gone() -> None:
@@ -211,10 +216,11 @@ def test_release_resumes_a_paused_player() -> None:
 @pytest.mark.parametrize("state", ["playing", "idle", "off", "unavailable"])
 def test_release_does_not_resume_a_player_that_is_not_paused_any_more(caplog: pytest.LogCaptureFixture, state: str) -> None:
     ducked = duck([player("media_player.a")], mode="pause").ducked
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.INFO):
         plan = plan_release("kitchen", ducked, {"media_player.a": current(0.6, state)})
     assert plan.actions == ()
-    assert f"Not resuming 'media_player.a': state is {state}, expected paused" in caplog.text
+    assert [record.levelno for record in caplog.records] == [logging.INFO]
+    assert f"Not resuming 'media_player.a': it was paused by Satellite Controller, but its state is now {state}" in caplog.text
 
 
 def test_paused_players_survive_storage_and_old_data_is_not_paused() -> None:
