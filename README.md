@@ -11,7 +11,7 @@ When an ESPHome Assist satellite (Linux Voice Assistant, Voice PE, your own ESPH
 - Every other `media_player` in the same area that is **playing** is lowered to 50 % of its own volume.
 - When the satellite is `idle` again, the volumes are restored.
 - The satellite that speaks lowers its own music locally. The integration does not touch it.
-- Sendspin players that are in the same group are handled once per group, because changing one member changes the whole group.
+- All volumes are read in one step and every target is computed from that snapshot, so players that are synchronized behind the scenes are not lowered twice.
 
 Neither the ESPHome native API nor Sendspin has a duck/unduck command, so the integration sets the volume itself.
 
@@ -41,7 +41,6 @@ Everything the integration does to a player shows in that player's **Activity** 
 | Lower the volume by | 50 % | Only when lowering: each playing player loses this share of its **own** volume. |
 | Restore delay | 0 s | Wait this long after the satellite is idle before restoring. |
 | Players that are never lowered | none | For example the player of the satellite that speaks, if it shows up a second time. |
-| Skip groups that span several rooms | off | A group is lowered as a whole, also in other rooms. Turn on to leave such groups alone. |
 
 ## Development
 

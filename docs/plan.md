@@ -35,21 +35,21 @@ The speaking satellite ducks its own music locally. The integration only lowers 
 | Device type | Detection | Duck | Restore |
 |---|---|---|---|
 | ESPHome `media_player`, no Sendspin | platform `esphome`, domain `media_player`, state `playing` | `volume_set(snapshot × 0.5)` | `volume_set(snapshot)` |
-| Sendspin player via Music Assistant | platform `music_assistant`, groups via attribute `group_members` | One command per group on one device of the group | `volume_set(snapshot)` on that device |
+| Sendspin player via Music Assistant | platform `music_assistant`, state `playing` | `volume_set(snapshot × 0.5)` on every playing player | `volume_set(snapshot)` on each |
 
 Rules:
 
 1. The reduction is relative: target = the device's own volume × 0.5 (default). The source is always the snapshot value of that device.
 2. A device is touched only if its `media_player` is `playing`. Paused, stopped, off or unavailable players are left alone and are not restored either. A player that starts during ducking is ducked afterwards.
 3. Players without the `VOLUME_SET` feature are skipped.
-4. **Groups are one unit.** Because changing one member changes the others, a group is handled once: pick a single device of the group (preferably one that is in the satellite's room and playing), read its volume, set half of it. The other members are neither read nor set. Restore sets the same device back.
-5. Group entities (Music Assistant `GROUP` players, the ESPHome Sendspin group player) are never targets themselves, otherwise the reduction would be applied twice.
-6. If a group spans several rooms, all of it is lowered (it moves together). Options: duck the whole group (default) or skip groups that span several rooms and log it.
-7. Members with different volumes before ducking are equal after restore. This edge case is accepted and documented.
+4. **One snapshot, then one change per player (decision 2026-11-25).** Temporarily assembled Sendspin players are not fixed groups, so a group is not treated as a unit. The volumes of all matching players are read in one step (no waiting between the reads), every target is computed from that snapshot and never from a volume an earlier change may have moved, and then each player is set on its own. If players are synchronized behind the scenes, the changes do not multiply (no 50 % of 50 %); the players that are synchronized end up at the value that was set last.
+5. Entities that only represent a group (Music Assistant `GROUP` players, the ESPHome Sendspin group player) are never targets themselves, otherwise their children would be lowered twice. They are recognised as entities that list `group_members` without being one of them.
+6. Restore sets every player back to its snapshot volume. A player counts as unchanged if its current volume equals any of the lowered volumes, because a synchronized player can end up at the volume of another one.
+7. The reads and the changes are not repeated or verified afterwards.
 8. If the user changes a volume while ducked (current value differs from the ducked value), the stored entry is dropped and not restored.
 9. The snapshot is persisted in a `Store`, so a restart of Home Assistant during ducking does not leave the music quiet.
 
-How to tell which entities are in the same Sendspin group is *unverified*. Start with `group_members` and the entity registry. If that is not enough, read Music Assistant's own player data (`entry.runtime_data.mass.players`, `player.type`) as the voice incubator integration does in `music.py`.
+How to recognise an entity that only represents a group is *unverified*; if the heuristic in rule 5 is not enough, read Music Assistant's own player data (`entry.runtime_data.mass.players`, `player.type`) as the voice incubator integration does in `music.py`.
 
 The same hardware can appear as an ESPHome `media_player` and as a Music Assistant player (same MAC). Ducking both would reduce twice. Merge by MAC (`CONNECTION_NETWORK_MAC`) and prefer the Sendspin player when it plays (*unverified*).
 
@@ -66,7 +66,6 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 - Ducking strength (default 50 %: each device is lowered by 50 % of its own volume).
 - Restore delay after `idle` (default 0 s), useful for follow-up conversations.
 - Excluded players (for example a satellite's own player when it shows up a second time).
-- Groups that span several rooms: duck all or skip.
 
 ## 6. Open design questions
 
@@ -85,7 +84,7 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 0. **Measurement with real hardware (before any code):** a Sendspin group with 2-3 devices. Set a volume through the Music Assistant player entity, the Music Assistant group entity and the ESPHome entity, and read all member volumes: same value, delta or proportional? How long until all values show in Home Assistant?
 1. Skeleton (done): manifest, config flow, CI.
 2. Satellites and players per area (done: `activity.py`, `players.py`; the area comes from Home Assistant's `async_get_effective_area_id`).
-3. `ducking.py` with tests: plan and restore, owners, several satellites, groups (done).
+3. `ducking.py` with tests: plan and restore, owners, several satellites, one snapshot for all players (done).
 4. `controller.py`: state listeners, service calls, persistence (done).
 5. Options flow and translations (done). Diagnostics not done.
 6. Hardware test: Linux Voice Assistant with a Sendspin group, Voice PE with an ESPHome player; measure latency.
@@ -102,17 +101,16 @@ The same hardware can appear as an ESPHome `media_player` and as a Music Assista
 Implemented:
 
 - `activity.py`: which satellites are busy per area (pure).
-- `ducking.py`: `plan_duck` and `plan_release` (pure). One device per group, group players never the target, relative reduction, only playing players with volume control, restore only when the volume is still the ducked one, several areas can share a lowered group.
+- `ducking.py`: `plan_duck` and `plan_release` (pure). Targets from one snapshot, one change per player, group players never the target, relative reduction, only playing players with volume control, restore only when the volume is still one of the lowered volumes.
 - `players.py`: reads the ESPHome and Music Assistant `media_player` states and areas.
 - `controller.py`: follows `assist_satellite` (platform `esphome`) and `media_player` states, ducks on the first busy satellite of an area, restores on the last, ducks players that start playing meanwhile, restore delay, restores on unload, persists the lowered players in a `Store` and restores them at startup.
-- Options flow: mode (lower or pause), strength, restore delay, excluded players, skip groups that span several rooms.
-- Pause mode: the playing player of each group in the room is paused with `media_player.media_pause` and resumed with `media_player.media_play` once the area is quiet, only if it is still paused. Needs the `PAUSE` feature, not volume control. Pausing a Sendspin group member is assumed to pause the whole group (*unverified*).
+- Options flow: mode (lower or pause), strength, restore delay, excluded players.
+- Pause mode: every playing player in the room is paused with `media_player.media_pause` and resumed with `media_player.media_play` once the area is quiet, only if it is still paused. Needs the `PAUSE` feature, not volume control. Pausing a Sendspin group member is assumed to pause the whole group (*unverified*).
 - Activity: every volume change, pause and resume fires a `logbook_entry` event for the player, so it shows on the player's and its device's activity.
 
 Heuristics that are not verified with hardware:
 
 - A Music Assistant group player is recognised as an entity that lists members but is not one of them. If Music Assistant also lists the leader or the group player itself, this has to be adjusted.
-- Players in the same group are found through the `group_members` attribute only.
 
 Not done:
 

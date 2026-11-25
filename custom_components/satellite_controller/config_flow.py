@@ -9,7 +9,6 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
-    BooleanSelector,
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
@@ -24,11 +23,9 @@ from .const import (
     CONF_EXCLUDED_ENTITIES,
     CONF_MODE,
     CONF_RESTORE_DELAY,
-    CONF_SKIP_MULTI_ROOM_GROUPS,
     DEFAULT_DUCK_PERCENT,
     DEFAULT_MODE,
     DEFAULT_RESTORE_DELAY,
-    DEFAULT_SKIP_MULTI_ROOM_GROUPS,
     DOMAIN,
     MODE_DUCK,
     MODE_PAUSE,
@@ -76,9 +73,6 @@ class SatelliteControllerOptionsFlow(OptionsFlow):
                 vol.Required(CONF_EXCLUDED_ENTITIES, default=options.get(CONF_EXCLUDED_ENTITIES, [])): EntitySelector(
                     EntitySelectorConfig(domain="media_player", multiple=True)
                 ),
-                vol.Required(
-                    CONF_SKIP_MULTI_ROOM_GROUPS, default=options.get(CONF_SKIP_MULTI_ROOM_GROUPS, DEFAULT_SKIP_MULTI_ROOM_GROUPS)
-                ): BooleanSelector(),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

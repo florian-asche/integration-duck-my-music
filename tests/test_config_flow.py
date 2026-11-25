@@ -50,7 +50,7 @@ async def test_options_flow_saves_the_options(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.FORM
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input={"mode": "pause", "duck_percent": 70, "restore_delay": 2, "excluded_entities": ["media_player.x"], "skip_multi_room_groups": True},
+        user_input={"mode": "pause", "duck_percent": 70, "restore_delay": 2, "excluded_entities": ["media_player.x"]},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["mode"] == "pause"

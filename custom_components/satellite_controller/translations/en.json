@@ -18,15 +18,13 @@
           "mode": "What to do with the music",
           "duck_percent": "Lower the volume by",
           "restore_delay": "Restore delay",
-          "excluded_entities": "Players that are never lowered",
-          "skip_multi_room_groups": "Skip groups that span several rooms"
+          "excluded_entities": "Players that are never lowered"
         },
         "data_description": {
           "mode": "Lower the volume of the players that play, or pause them and resume them afterwards.",
           "duck_percent": "Only for lowering: each playing player loses this share of its own volume while a satellite in its room is busy.",
           "restore_delay": "Seconds to wait after the satellite is idle before the volume is restored. Useful for follow-up questions.",
-          "excluded_entities": "Add players that lower their own music, such as the player of the satellite that speaks, when it shows up as a second player.",
-          "skip_multi_room_groups": "A group is lowered as a whole. Turn this on to leave groups alone that also play in other rooms."
+          "excluded_entities": "Add players that lower their own music, such as the player of the satellite that speaks, when it shows up as a second player."
         }
       }
     }

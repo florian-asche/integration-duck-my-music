@@ -28,11 +28,9 @@ from .const import (
     CONF_EXCLUDED_ENTITIES,
     CONF_MODE,
     CONF_RESTORE_DELAY,
-    CONF_SKIP_MULTI_ROOM_GROUPS,
     DEFAULT_DUCK_PERCENT,
     DEFAULT_MODE,
     DEFAULT_RESTORE_DELAY,
-    DEFAULT_SKIP_MULTI_ROOM_GROUPS,
     DOMAIN,
     SATELLITE_PLATFORM,
     STORAGE_KEY,
@@ -140,7 +138,6 @@ class SatelliteController:
                 set(options.get(CONF_EXCLUDED_ENTITIES, [])),
                 {device for device in devices if device is not None},
                 self._ducked,
-                bool(options.get(CONF_SKIP_MULTI_ROOM_GROUPS, DEFAULT_SKIP_MULTI_ROOM_GROUPS)),
                 options.get(CONF_MODE, DEFAULT_MODE),
             )
             _LOGGER.debug("Area '%s': %d volume changes planned, %d players lowered afterwards", area_id, len(plan.actions), len(plan.ducked))
